@@ -1,0 +1,217 @@
+{
+  "bus": {
+    "id": "bus",
+    "slot": "extras",
+    "name": "Spacecraft bus",
+    "short": "The body: frame, computer, thrusters, fuel tanks",
+    "explain": "Every spacecraft has a 'bus': the body that holds everything together. It carries the onboard computer, small thrusters that turn the spacecraft, and the fuel tanks. Always included.",
+    "cost": 120,
+    "mass": 800,
+    "power": 60
+  },
+  "slots": [
+    { "id": "launchVehicle", "label": "Launch vehicle", "hint": "The rocket that throws your spacecraft into space. Bigger rocket = more mass, more money.", "max": 1, "optional": false },
+    { "id": "power", "label": "Power", "hint": "Where electricity comes from. Everything on board runs on it.", "max": 1, "optional": false },
+    { "id": "instruments", "label": "Instruments", "hint": "The science tools. Pick up to 3. Each one adds mass, power use, cost and data.", "max": 3, "optional": false },
+    { "id": "comms", "label": "Comms", "hint": "The radio that sends your data home. Science that never reaches Earth doesn't count.", "max": 1, "optional": false },
+    { "id": "extras", "label": "Extras", "hint": "Optional equipment for special situations.", "max": 3, "optional": true }
+  ],
+  "parts": [
+    {
+      "id": "lv_light",
+      "slot": "launchVehicle",
+      "name": "Light rocket",
+      "short": "Cheap, but lifts little",
+      "explain": "A two-stage rocket. Rockets drop empty stages on the way up to get lighter: that is how they reach space. A small rocket can only carry a light spacecraft.",
+      "stages": "2 stages",
+      "similarTo": "Class of Delta II, which launched the Spirit and Opportunity rovers",
+      "cost": 60,
+      "mass": 0,
+      "power": 0,
+      "capacity": { "moon": 1800, "mars": 1500, "europa": 400 }
+    },
+    {
+      "id": "lv_medium",
+      "slot": "launchVehicle",
+      "name": "Medium rocket",
+      "short": "The workhorse for Mars",
+      "explain": "Two stages plus strap-on boosters that burn for the first two minutes and fall away. Enough for most Mars missions.",
+      "stages": "2 stages + boosters",
+      "similarTo": "Class of Atlas V, which launched Perseverance and MRO",
+      "cost": 110,
+      "mass": 0,
+      "power": 0,
+      "capacity": { "moon": 6000, "mars": 4000, "europa": 1500 }
+    },
+    {
+      "id": "lv_heavy",
+      "slot": "launchVehicle",
+      "name": "Heavy rocket",
+      "short": "Three cores, goes anywhere",
+      "explain": "Three rocket cores strapped side by side. The side cores separate first. Needed for heavy spacecraft or far targets like Jupiter.",
+      "stages": "3 cores + upper stage",
+      "similarTo": "Class of Falcon Heavy, which launched Europa Clipper",
+      "cost": 180,
+      "mass": 0,
+      "power": 0,
+      "capacity": { "moon": 15000, "mars": 10000, "europa": 5000 }
+    },
+    {
+      "id": "solar_s",
+      "slot": "power",
+      "name": "Small solar panels",
+      "short": "Light and cheap. Needs sunlight",
+      "explain": "Panels turn sunlight into electricity. The energy is free, but the farther you go from the Sun, the weaker the light. Dust and darkness stop them.",
+      "powerType": "solar",
+      "output": 400,
+      "cost": 15,
+      "mass": 40,
+      "power": 0
+    },
+    {
+      "id": "solar_l",
+      "slot": "power",
+      "name": "Large solar panels",
+      "short": "More power, more mass",
+      "explain": "Bigger wings, more electricity. Still useless in darkness, and weak far from the Sun.",
+      "powerType": "solar",
+      "output": 900,
+      "cost": 35,
+      "mass": 120,
+      "power": 0
+    },
+    {
+      "id": "rtg",
+      "slot": "power",
+      "name": "RTG (nuclear battery)",
+      "short": "Works anywhere, costs a lot",
+      "explain": "A radioisotope generator turns the heat of decaying plutonium into electricity. It works in darkness, dust and far from the Sun for many years. Curiosity, Perseverance and Voyager use one.",
+      "powerType": "rtg",
+      "output": 300,
+      "cost": 90,
+      "mass": 60,
+      "power": 0
+    },
+    {
+      "id": "camera",
+      "slot": "instruments",
+      "name": "Camera",
+      "short": "Detailed photos of the surface",
+      "explain": "Takes sharp pictures: craters, dry riverbeds, cracks in ice. Photos are big files, so a camera makes a lot of data.",
+      "cost": 40,
+      "mass": 60,
+      "power": 50,
+      "data": 8,
+      "science": 25
+    },
+    {
+      "id": "spectrometer",
+      "slot": "instruments",
+      "name": "Spectrometer",
+      "short": "Tells what rocks are made of",
+      "explain": "Splits light into colors, like a prism. Every mineral has its own color fingerprint, so it can find minerals that only form in water.",
+      "cost": 45,
+      "mass": 50,
+      "power": 80,
+      "data": 4,
+      "science": 30
+    },
+    {
+      "id": "radar",
+      "slot": "instruments",
+      "name": "Ice radar",
+      "short": "Sees under the surface",
+      "explain": "Sends radio waves into the ground and listens to the echoes. It can see buried ice and layers kilometers deep. Needs a lot of power.",
+      "cost": 55,
+      "mass": 90,
+      "power": 120,
+      "data": 5,
+      "science": 30
+    },
+    {
+      "id": "seismometer",
+      "slot": "instruments",
+      "name": "Seismometer",
+      "short": "Feels quakes. Lander only",
+      "explain": "Feels tiny shaking of the ground to learn what is deep inside a world. It must touch the ground, so it only works on a lander.",
+      "requiresOrbit": ["lander"],
+      "cost": 25,
+      "mass": 30,
+      "power": 15,
+      "data": 0.2,
+      "science": 25
+    },
+    {
+      "id": "magnetometer",
+      "slot": "instruments",
+      "name": "Magnetometer",
+      "short": "Senses hidden oceans",
+      "explain": "Measures magnetic fields. A salty ocean under ice changes the magnetic field around a moon. That is how scientists found hints of Europa's ocean.",
+      "cost": 20,
+      "mass": 15,
+      "power": 10,
+      "data": 0.1,
+      "science": 20
+    },
+    {
+      "id": "antenna_small",
+      "slot": "comms",
+      "name": "Small antenna",
+      "short": "Light and cheap, but slow",
+      "explain": "Sends data home by radio. A small antenna spreads its signal wide, so only a little of it reaches Earth: slow downloads.",
+      "downlink": 4,
+      "cost": 10,
+      "mass": 15,
+      "power": 30
+    },
+    {
+      "id": "antenna_hga",
+      "slot": "comms",
+      "name": "High-gain antenna",
+      "short": "Big dish, 4× faster",
+      "explain": "A big dish focuses the radio beam into a narrow ray aimed at Earth, like a flashlight instead of a bare bulb. Much faster, but heavier and power-hungry.",
+      "downlink": 16,
+      "cost": 35,
+      "mass": 50,
+      "power": 70
+    },
+    {
+      "id": "heat_shield",
+      "slot": "extras",
+      "name": "Heat shield",
+      "short": "Needed to land on Mars",
+      "explain": "Falling through air heats a spacecraft to over 1,000 °C. A heat shield protects it while the air slows it down. No air on the Moon or Europa, so no need there.",
+      "cost": 60,
+      "mass": 300,
+      "power": 0
+    },
+    {
+      "id": "redundancy",
+      "slot": "extras",
+      "name": "Redundancy kit",
+      "short": "Backup electronics, longer life",
+      "explain": "A spare computer and spare wiring. If something breaks, the backup takes over. The mission lives 50% longer and survives more accidents.",
+      "lifetimeMult": 1.5,
+      "cost": 40,
+      "mass": 80,
+      "power": 10
+    },
+    {
+      "id": "battery",
+      "slot": "extras",
+      "name": "Battery pack",
+      "short": "Stores energy for bad days",
+      "explain": "Charges when there is spare power and helps through shadows and storms.",
+      "cost": 10,
+      "mass": 50,
+      "power": 0
+    }
+  ],
+  "defaultDesign": {
+    "launchVehicle": "lv_light",
+    "power": "solar_s",
+    "instruments": ["camera"],
+    "comms": "antenna_small",
+    "extras": []
+  }
+}

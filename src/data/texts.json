@@ -1,0 +1,178 @@
+{
+  "game": {
+    "title": "Mission Control",
+    "tagline": "Design a real space mission. Every choice has a consequence.",
+    "station": "DEEP SPACE STATION 07"
+  },
+  "capcom": {
+    "objective": "Director, choose where we go. Each target has its own budget and its own problems.",
+    "orbit": "How do we meet the target? Fly past, circle it, or land on it. Each way changes fuel, lifetime and science.",
+    "assembly": "Build the spacecraft. Watch the six bars on top: every part changes all of them.",
+    "window": "Planets move. Launch when Earth and the target line up and the rocket can carry more.",
+    "launch": "All stations report GO. Clear the tower.",
+    "mission": "The spacecraft is flying. Watch the log. When something goes wrong, you decide.",
+    "debrief": "Mission complete. Here is what worked, what didn't, and why."
+  },
+  "onboarding": [
+    "Director, you have one budget and one rocket ride.",
+    "Build a spacecraft, launch it and run the mission.",
+    "Six resources limit you: Budget, Mass, Power, Data, Comms and Time.",
+    "There is no single right answer. Every choice has a consequence."
+  ],
+  "resources": {
+    "budget": {
+      "label": "Budget",
+      "explain": "Money to build, launch and operate the mission (in millions of dollars). Operations cost money every month."
+    },
+    "mass": {
+      "label": "Mass",
+      "explain": "Spacecraft mass including the fuel needed to brake at the target. It must fit what the rocket can lift."
+    },
+    "power": {
+      "label": "Power",
+      "explain": "Electricity used on board vs. electricity produced. Solar panels get weaker far from the Sun."
+    },
+    "data": {
+      "label": "Data",
+      "explain": "How much data the instruments collect per day. More data means more science, if you can send it home."
+    },
+    "comms": {
+      "label": "Comms",
+      "explain": "How much data the antenna can send to Earth per day. Data that can't be sent is lost."
+    },
+    "time": {
+      "label": "Time",
+      "explain": "How long the spacecraft keeps working, compared with the time the science goal needs."
+    }
+  },
+  "issues": {
+    "budgetOver": "Over budget by ${over}M. Pick cheaper parts or fewer instruments.",
+    "massOver": "Too heavy by {over} kg. The {rocket} can send {capacity} kg to {destination}. Choose a bigger rocket or drop parts.",
+    "powerDead": "Only {available} W at {destination}. The spacecraft needs at least {bus} W just to stay alive. It will freeze.",
+    "powerLow": "Power short: instruments can run only {uptime}% of the time. Add power or remove an instrument.",
+    "solarFar": "{destination} gets only {sunlight}% of Earth's sunlight, so your panels give {available} W.",
+    "commsLow": "Only {share}% of your data can reach Earth. A bigger antenna or fewer data-hungry instruments would help.",
+    "timeShort": "The spacecraft lasts {months} months, but the goal needs {required}.",
+    "lunarNight": "Solar landers freeze in the 14-day lunar night. Lifetime: about 2 weeks.",
+    "requiredPart": "{orbit} needs a {part}. Without it the mission will fail.",
+    "orbitInstrument": "{part} only works on a lander. On this mission it is dead weight.",
+    "noInstruments": "No instruments: the spacecraft will fly, but bring back no science.",
+    "lostPower": "Power at {destination}: {available} W. Below survival level. The spacecraft froze.",
+    "lostPowerWhy": "Too little power to keep the spacecraft alive. Solar panels lose strength fast far from the Sun.",
+    "powerCheck": "Arrived at {destination}. Switching from cruise power to science power..."
+  },
+  "log": {
+    "launch": [
+      {
+        "callsign": "CAPCOM",
+        "text": "All stations GO. Ignition."
+      },
+      {
+        "callsign": "FLIGHT",
+        "text": "Lift-off! The {rocket} has cleared the tower."
+      },
+      {
+        "callsign": "GUIDO",
+        "text": "Max Q: the moment of strongest air pressure on the rocket. Holding steady."
+      },
+      {
+        "callsign": "BOOSTER",
+        "text": "First stage empty and dropped. Lighter rocket, faster climb."
+      },
+      {
+        "callsign": "GUIDO",
+        "text": "Second stage in orbit at 7.8 km/s. That is 28,000 km/h."
+      },
+      {
+        "callsign": "FIDO",
+        "text": "Upper stage burn complete. Leaving Earth toward {destination}."
+      },
+      {
+        "callsign": "EECOM",
+        "text": "Spacecraft separated. {power} online, {powerAvailable} W at Earth."
+      }
+    ],
+    "cruise": [
+      {
+        "callsign": "FIDO",
+        "text": "Cruise: {transfer}. The engine is off: the spacecraft coasts along a curve around the Sun."
+      },
+      {
+        "callsign": "FIDO",
+        "text": "Small course correction burn. On target for {destination}."
+      }
+    ],
+    "arrival": [
+      {
+        "callsign": "INCO",
+        "text": "Signal delay now {delay}. The spacecraft has to act on its own."
+      }
+    ],
+    "operations": [
+      {
+        "callsign": "INCO",
+        "text": "Science is on. Instruments collect {data} GB/day, {share}% reaches Earth."
+      },
+      {
+        "callsign": "EECOM",
+        "text": "Power: using {need} of {available} W."
+      }
+    ],
+    "end": {
+      "callsign": "FLIGHT",
+      "text": "Mission complete after {months} months. Great work, Director."
+    },
+    "lost": {
+      "callsign": "FLIGHT",
+      "text": "We have lost the spacecraft. Let's find out why."
+    }
+  },
+  "phases": {
+    "launch": "Launch",
+    "cruise": "Cruise",
+    "arrival": "Arrival",
+    "operations": "Operations"
+  },
+  "notes": {
+    "favorite": {
+      "title": "Right tool for the job",
+      "text": "{part}: the right instruments for this goal (×1.5 science)."
+    },
+    "fullDownlink": {
+      "title": "All data reached Earth",
+      "text": "Your antenna sent everything the instruments collected."
+    },
+    "lowDownlink": {
+      "title": "Data stuck on board",
+      "text": "Only {share}% of your data reached Earth. A high-gain antenna sends 4× more."
+    },
+    "lowPower": {
+      "title": "Not enough power",
+      "text": "Instruments ran only {uptime}% of the time because power was short."
+    },
+    "shortLife": {
+      "title": "Mission ended early",
+      "text": "The spacecraft worked {months} of the {required} months the goal needed."
+    },
+    "longLife": {
+      "title": "Long life",
+      "text": "The spacecraft outlived the goal: {months} months of work."
+    },
+    "budgetLeft": {
+      "title": "Money left over",
+      "text": "${left}M left. Real agencies use savings to extend missions."
+    },
+    "oversized": {
+      "title": "Rocket too big",
+      "text": "You used only {use}% of the rocket's capacity. A smaller rocket would save ${save}M."
+    },
+    "deadWeight": {
+      "title": "Dead weight",
+      "text": "{part} only works on a lander. It flew for nothing."
+    },
+    "noFavorite": {
+      "title": "Instruments don't fit the goal",
+      "text": "None of your instruments is a specialist for this goal."
+    }
+  }
+}

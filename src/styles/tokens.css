@@ -1,0 +1,42 @@
+/* Design tokens — "space station computer": dark, translucent panels, one accent per screen. */
+:root {
+  --bg: #05080d;
+  --bg-raised: #0a1119;
+  --panel: rgba(15, 26, 36, 0.7);
+  --panel-solid: #0f1a24;
+  --panel-hover: rgba(22, 37, 50, 0.8);
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.16);
+
+  --text: rgba(255, 255, 255, 0.9);
+  --text-dim: rgba(255, 255, 255, 0.55);
+  --text-faint: rgba(255, 255, 255, 0.32);
+
+  --accent: #5dcaa5;
+  --accent-strong: #7fe0bf;
+  --accent-soft: rgba(93, 202, 165, 0.14);
+  --accent-line: rgba(93, 202, 165, 0.45);
+  --warn: #ef9f27;
+  --warn-soft: rgba(239, 159, 39, 0.14);
+  --danger: #e24b4a;
+  --danger-soft: rgba(226, 75, 74, 0.16);
+
+  --font-ui: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+
+  --radius: 16px;
+  --radius-md: 12px;
+  --radius-sm: 8px;
+
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 150ms;
+  --dur: 260ms;
+  --dur-slow: 400ms;
+
+  --blur: blur(18px) saturate(140%);
+  --shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+
+  --header-h: 64px;
+  --gutter: clamp(16px, 3vw, 40px);
+}

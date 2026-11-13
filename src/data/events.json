@@ -1,0 +1,493 @@
+{
+  "maxChoiceEvents": 2,
+  "events": [
+    {
+      "id": "solar_flare",
+      "phase": "cruise",
+      "kind": "choice",
+      "priority": 2,
+      "when": {},
+      "callsign": "EECOM",
+      "title": "Solar flare!",
+      "text": "A burst of particles from the Sun hits the spacecraft in 2 hours. Radiation can scramble unprotected electronics.",
+      "defaultChoice": 1,
+      "choices": [
+        {
+          "label": "Safe mode",
+          "hint": "Switch instruments off for a day",
+          "outcomes": [
+            {
+              "quality": "good",
+              "log": "Instruments off. Flare passed. All systems nominal.",
+              "why": "Safe mode protects electronics. One lost day is a tiny price.",
+              "effects": {
+                "scienceMult": 0.98
+              }
+            }
+          ]
+        },
+        {
+          "label": "Keep working",
+          "hint": "Don't lose a day of science",
+          "outcomes": [
+            {
+              "when": {
+                "has": [
+                  "redundancy"
+                ]
+              },
+              "quality": "ok",
+              "log": "Main computer glitched. Backup computer took over.",
+              "why": "Your redundancy kit's backup computer saved the mission.",
+              "effects": {}
+            },
+            {
+              "quality": "bad",
+              "log": "Instrument electronics damaged. Data quality down 15%.",
+              "why": "Radiation damaged unprotected electronics. Safe mode would have cost only one day.",
+              "effects": {
+                "scienceMult": 0.85
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "antenna_glitch",
+      "phase": "cruise",
+      "kind": "choice",
+      "priority": 1,
+      "when": {},
+      "callsign": "INCO",
+      "title": "Antenna pointing error",
+      "text": "The antenna drifted off Earth. Reboot the pointing system (uses 20% of power for a week) or keep going and hope it holds?",
+      "defaultChoice": 1,
+      "choices": [
+        {
+          "label": "Reboot",
+          "hint": "Costs 20% power for a week",
+          "outcomes": [
+            {
+              "when": {
+                "minPowerMargin": 0.2
+              },
+              "quality": "good",
+              "log": "Reboot complete. Antenna locked on Earth.",
+              "why": "You had spare power, so the reboot cost nothing. Power margin is insurance.",
+              "effects": {}
+            },
+            {
+              "quality": "ok",
+              "log": "Reboot done, but instruments had to pause for a week.",
+              "why": "Without spare power, the reboot paused the science. A power margin of 20% avoids this.",
+              "effects": {
+                "scienceMult": 0.95
+              }
+            }
+          ]
+        },
+        {
+          "label": "Keep going",
+          "hint": "Risk a weaker radio link",
+          "outcomes": [
+            {
+              "when": {
+                "has": [
+                  "redundancy"
+                ]
+              },
+              "quality": "ok",
+              "log": "Backup pointing sensor holds the lock on Earth.",
+              "why": "The redundancy kit's backup sensor fixed the pointing.",
+              "effects": {}
+            },
+            {
+              "quality": "bad",
+              "log": "Pointing keeps drifting. Data rate down 30% for the rest of the mission.",
+              "why": "A tiny pointing error means much of the radio beam misses Earth.",
+              "effects": {
+                "downlinkMult": 0.7
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mars_entry",
+      "phase": "arrival",
+      "kind": "auto",
+      "priority": 10,
+      "when": {
+        "destination": [
+          "mars"
+        ],
+        "orbit": [
+          "lander"
+        ]
+      },
+      "callsign": "FLIGHT",
+      "title": "Entry, descent and landing",
+      "text": "Seven minutes from the top of the atmosphere to the ground. The signal takes longer than that to reach Earth, so the lander is on its own.",
+      "outcomes": [
+        {
+          "when": {
+            "has": [
+              "heat_shield"
+            ]
+          },
+          "quality": "good",
+          "log": "Heat shield glowing at 1,300 °C... parachute out... rockets firing... TOUCHDOWN!",
+          "why": "The heat shield let the air slow you down from 20,000 km/h.",
+          "effects": {}
+        },
+        {
+          "quality": "bad",
+          "log": "Signal lost during entry. The spacecraft burned up in the atmosphere.",
+          "why": "No heat shield: air friction heated the spacecraft to over 1,000 °C. Landers on Mars must carry one.",
+          "effects": {
+            "lost": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "moon_descent",
+      "phase": "arrival",
+      "kind": "auto",
+      "priority": 8,
+      "when": {
+        "destination": [
+          "moon",
+          "europa"
+        ],
+        "orbit": [
+          "lander"
+        ]
+      },
+      "callsign": "FLIGHT",
+      "title": "Powered descent",
+      "text": "No air to slow down, so the engine fires all the way to the ground.",
+      "outcomes": [
+        {
+          "quality": "info",
+          "log": "Engine burning... 100 meters... 10 meters... contact light. TOUCHDOWN!",
+          "why": "With no air, every bit of braking comes from fuel. That's why landers are so heavy.",
+          "effects": {}
+        }
+      ]
+    },
+    {
+      "id": "orbit_insertion",
+      "phase": "arrival",
+      "kind": "auto",
+      "priority": 7,
+      "when": {
+        "orbit": [
+          "orbiter"
+        ]
+      },
+      "callsign": "FIDO",
+      "title": "Orbit insertion",
+      "text": "The main engine must fire at exactly the right moment, or the spacecraft flies past.",
+      "outcomes": [
+        {
+          "quality": "info",
+          "log": "Main engine burn complete. We are in orbit!",
+          "why": "Braking into orbit needs a long engine burn: that's the extra fuel mass you carried.",
+          "effects": {}
+        }
+      ]
+    },
+    {
+      "id": "flyby_pass",
+      "phase": "arrival",
+      "kind": "auto",
+      "priority": 7,
+      "when": {
+        "orbit": [
+          "flyby"
+        ]
+      },
+      "callsign": "FIDO",
+      "title": "Closest approach",
+      "text": "The spacecraft races past at thousands of km/h. Every instrument fires at once.",
+      "outcomes": [
+        {
+          "quality": "info",
+          "log": "Closest approach: 300 km above the surface. Instruments recording.",
+          "why": "A flyby needs no braking fuel, but the close-up view lasts only hours.",
+          "effects": {}
+        }
+      ]
+    },
+    {
+      "id": "jupiter_radiation",
+      "phase": "arrival",
+      "kind": "choice",
+      "priority": 9,
+      "when": {
+        "destination": [
+          "europa"
+        ]
+      },
+      "callsign": "FLIGHT",
+      "title": "Radiation dose climbing!",
+      "text": "Close passes give the sharpest data, but Jupiter's radiation is eating the electronics.",
+      "defaultChoice": 0,
+      "choices": [
+        {
+          "label": "Stay close",
+          "hint": "Sharper data, more radiation",
+          "outcomes": [
+            {
+              "when": {
+                "has": [
+                  "redundancy"
+                ]
+              },
+              "quality": "ok",
+              "log": "Shielding holds. Sharp data, some wear on the electronics.",
+              "why": "Backup electronics let you take the risk. Europa Clipper hides its electronics in a thick vault.",
+              "effects": {
+                "scienceMult": 1.05,
+                "lifetimeMult": 0.8
+              }
+            },
+            {
+              "quality": "bad",
+              "log": "Electronics degrading fast. Expected mission life cut in half.",
+              "why": "Radiation slowly destroys computer chips. Without shielding or backups, the mission dies early.",
+              "effects": {
+                "lifetimeMult": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "label": "Back off",
+          "hint": "Wider passes, safer",
+          "outcomes": [
+            {
+              "quality": "good",
+              "log": "Passes widened. Slightly blurrier data, much safer spacecraft.",
+              "why": "Trading a little science for a much longer life is often the smart engineering choice.",
+              "effects": {
+                "scienceMult": 0.92
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "lunar_night",
+      "phase": "operations",
+      "kind": "auto",
+      "priority": 8,
+      "when": {
+        "destination": [
+          "moon"
+        ],
+        "orbit": [
+          "lander"
+        ],
+        "powerType": [
+          "solar"
+        ]
+      },
+      "callsign": "EECOM",
+      "title": "Sunset",
+      "text": "The lunar night begins: 14 Earth days of darkness at −170 °C.",
+      "outcomes": [
+        {
+          "quality": "bad",
+          "log": "Solar power at zero. Battery drained. The lander froze.",
+          "why": "Solar landers cannot survive the 14-day lunar night. An RTG keeps them warm.",
+          "effects": {}
+        }
+      ]
+    },
+    {
+      "id": "dust_storm_lander",
+      "phase": "operations",
+      "kind": "choice",
+      "priority": 8,
+      "when": {
+        "destination": [
+          "mars"
+        ],
+        "orbit": [
+          "lander"
+        ],
+        "powerType": [
+          "solar"
+        ]
+      },
+      "callsign": "EECOM",
+      "title": "Dust storm!",
+      "text": "Dust blocks the Sun. Power from your panels just dropped by 60%. Not enough to run everything.",
+      "defaultChoice": 1,
+      "choices": [
+        {
+          "label": "Hibernate",
+          "hint": "Turn instruments off, keep heaters on",
+          "outcomes": [
+            {
+              "quality": "good",
+              "log": "Instruments asleep for 6 weeks. Heaters on. The lander survived the storm.",
+              "why": "Saving power kept the electronics warm. The rover Opportunity was lost in a storm like this in 2018.",
+              "effects": {
+                "scienceMult": 0.9
+              }
+            }
+          ]
+        },
+        {
+          "label": "Keep working",
+          "hint": "Don't stop the science",
+          "outcomes": [
+            {
+              "when": {
+                "has": [
+                  "battery"
+                ]
+              },
+              "quality": "ok",
+              "log": "The battery carried the lander through the darkest days.",
+              "why": "The battery stored energy for exactly this kind of bad day.",
+              "effects": {
+                "scienceMult": 0.95
+              }
+            },
+            {
+              "quality": "bad",
+              "log": "Heaters failed. Electronics froze at −80 °C. Mission over early.",
+              "why": "Without enough power for heaters, electronics freeze. An RTG doesn't care about dust.",
+              "effects": {
+                "lifetimeMult": 0.3
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dust_storm_rtg",
+      "phase": "operations",
+      "kind": "auto",
+      "priority": 6,
+      "when": {
+        "destination": [
+          "mars"
+        ],
+        "orbit": [
+          "lander"
+        ],
+        "powerType": [
+          "rtg"
+        ]
+      },
+      "callsign": "EECOM",
+      "title": "Dust storm!",
+      "text": "A planet-wide dust storm blocks the Sun.",
+      "outcomes": [
+        {
+          "quality": "good",
+          "log": "RTG output unchanged. All systems nominal.",
+          "why": "Your RTG doesn't need sunlight, so the dust storm changed nothing.",
+          "effects": {}
+        }
+      ]
+    },
+    {
+      "id": "dust_storm_orbit",
+      "phase": "operations",
+      "kind": "choice",
+      "priority": 4,
+      "when": {
+        "destination": [
+          "mars"
+        ],
+        "orbit": [
+          "orbiter"
+        ]
+      },
+      "callsign": "FLIGHT",
+      "title": "Global dust storm",
+      "text": "Dust hides the whole surface for two months. Your orbiter is safe above it, but the cameras can't see the ground.",
+      "defaultChoice": 1,
+      "choices": [
+        {
+          "label": "Study the storm",
+          "hint": "Point the instruments at the atmosphere",
+          "outcomes": [
+            {
+              "quality": "good",
+              "log": "Instruments studying the storm itself. Rare atmosphere data!",
+              "why": "A flexible plan turns bad luck into new science.",
+              "effects": {}
+            }
+          ]
+        },
+        {
+          "label": "Wait it out",
+          "hint": "Pause and wait for clear skies",
+          "outcomes": [
+            {
+              "quality": "ok",
+              "log": "Two months of waiting. Surface mapping resumes after the storm.",
+              "why": "Waiting is safe, but two months of instrument time were lost.",
+              "effects": {
+                "scienceMult": 0.92
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "data_overflow",
+      "phase": "operations",
+      "kind": "choice",
+      "priority": 7,
+      "when": {
+        "commsBottleneck": true
+      },
+      "callsign": "INCO",
+      "title": "Memory full!",
+      "text": "Instruments make more data than the antenna can send home. The onboard memory is full.",
+      "defaultChoice": 1,
+      "choices": [
+        {
+          "label": "Compress data",
+          "hint": "Smaller files, a bit less detail",
+          "outcomes": [
+            {
+              "quality": "good",
+              "log": "Compression on. 25% more science now fits through the link.",
+              "why": "Squeezing files lets a slow antenna send more, at a small cost in detail.",
+              "effects": {
+                "downlinkMult": 1.25,
+                "scienceMult": 0.97
+              }
+            }
+          ]
+        },
+        {
+          "label": "Send what fits",
+          "hint": "Delete what can't be sent",
+          "outcomes": [
+            {
+              "quality": "ok",
+              "log": "Oldest data deleted to make room.",
+              "why": "Data that can't be sent is lost. A bigger antenna fixes the root cause.",
+              "effects": {}
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
