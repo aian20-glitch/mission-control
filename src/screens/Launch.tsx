@@ -1,9 +1,11 @@
-import { Component, Suspense, lazy, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { Readout } from '../components/Readout'
+import { SceneBoundary } from '../components/SceneBoundary'
 import { fill, num, texts } from '../logic/data'
 import { useMission, useMissionReport } from '../store/useMission'
 import { createDirector, smoothStep } from '../three/launch/director'
+import { missionView } from '../three/missionView'
 import { loadLaunchScene } from '../three/preload'
 
 const LaunchScene = lazy(loadLaunchScene)
@@ -36,23 +38,6 @@ interface Telemetry {
   time: number
   altitude: number
   speed: number
-}
-
-// If WebGL is not available, the film is skipped instead of breaking the game.
-class SceneBoundary extends Component<{ onError: () => void; children: ReactNode }, { failed: boolean }> {
-  state = { failed: false }
-
-  static getDerivedStateFromError() {
-    return { failed: true }
-  }
-
-  componentDidCatch() {
-    this.props.onError()
-  }
-
-  render() {
-    return this.state.failed ? null : this.props.children
-  }
 }
 
 // The launch film (3D): countdown, lift-off, climb through the clouds, stage separation in space,
@@ -132,41 +117,53 @@ export function Launch({ onGone }: { onGone: () => void }) {
       onGone()
       return
     }
-    // Wait two frames, so the mission screen is on the page and can be measured.
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() => {
-        const panel = document.querySelector('.trajectory-panel')
-        if (!panel) {
-          fadeOut(0.6)
-          return
-        }
-        const progress = { value: 0 }
-        tweensRef.current.push(
-          gsap.to(progress, {
-            value: 1,
-            duration: MORPH_SECONDS,
-            ease: 'none',
-            onUpdate: () => {
-              // Measured every frame: the mission screen is still settling into place.
-              const box = panel.getBoundingClientRect()
-              const earth = document.querySelector('.trajectory-earth')
-              if (earth) {
-                const e = earth.getBoundingClientRect()
-                director.morphEarth = { x: e.left + e.width / 2, y: e.top + e.height / 2, r: e.width / 2 }
-              }
-              director.morph = progress.value
-              const m = smoothStep(progress.value)
-              const top = box.top * m
-              const left = box.left * m
-              const right = (window.innerWidth - box.right) * m
-              const bottom = (window.innerHeight - box.bottom) * m
-              root.style.clipPath = 'inset(' + top + 'px ' + right + 'px ' + bottom + 'px ' + left + 'px round ' + 16 * m + 'px)'
-            },
-            onComplete: () => fadeOut(0.6),
-          }),
-        )
-      }),
-    )
+    const startShrink = () => {
+      const panel = document.querySelector('.trajectory-panel')
+      if (!panel) {
+        fadeOut(0.6)
+        return
+      }
+      const progress = { value: 0 }
+      tweensRef.current.push(
+        gsap.to(progress, {
+          value: 1,
+          duration: MORPH_SECONDS,
+          ease: 'none',
+          onUpdate: () => {
+            // Measured every frame: the mission screen is still settling into place.
+            const box = panel.getBoundingClientRect()
+            // The 3D Earth of the mission map; the flat map's Earth if 3D is not there.
+            const earth = document.querySelector('.trajectory-earth')
+            if (missionView.earth) {
+              director.morphEarth = missionView.earth
+            } else if (earth) {
+              const e = earth.getBoundingClientRect()
+              director.morphEarth = { x: e.left + e.width / 2, y: e.top + e.height / 2, r: e.width / 2 }
+            }
+            director.morph = progress.value
+            const m = smoothStep(progress.value)
+            const top = box.top * m
+            const left = box.left * m
+            const right = (window.innerWidth - box.right) * m
+            const bottom = (window.innerHeight - box.bottom) * m
+            root.style.clipPath = 'inset(' + top + 'px ' + right + 'px ' + bottom + 'px ' + left + 'px round ' + 16 * m + 'px)'
+          },
+          onComplete: () => fadeOut(0.9),
+        }),
+      )
+    }
+
+    // Wait until the mission screen is on the page and its 3D Earth is drawn (at most ~1.2 s),
+    // so there is something to land on.
+    const waitStart = performance.now()
+    const waitForEarth = () => {
+      if (!missionView.earth && performance.now() - waitStart < 1200) {
+        requestAnimationFrame(waitForEarth)
+        return
+      }
+      startShrink()
+    }
+    requestAnimationFrame(waitForEarth)
   }
 
   // The whole film as one timeline. It changes `director` (read by the 3D scene every frame)

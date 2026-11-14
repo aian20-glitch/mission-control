@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import { HudButton } from '../components/HudButton'
 import { MissionLog, type LogLine, type LogTone } from '../components/MissionLog'
+import { SceneBoundary } from '../components/SceneBoundary'
 import { ScreenHeader, stepLabel } from '../components/ScreenHeader'
 import { useSmoothValue } from '../components/useSmoothValue'
 import { texts, fill } from '../logic/data'
@@ -9,6 +10,9 @@ import { formatLifetime, transferMonths, bestWindowMonth } from '../logic/resour
 import { evaluateMission } from '../logic/scoring'
 import type { MissionEvent, MissionPhase, Outcome, PlanStep, Quality } from '../logic/types'
 import { useMission, useMissionReport } from '../store/useMission'
+import { loadMissionScene } from '../three/preload'
+
+const MissionScene = lazy(loadMissionScene)
 
 const STEP_MS = 1500
 const DECISION_SECONDS = 15
@@ -211,6 +215,7 @@ function LiveStats({ power, delivered, science }: { power: string; delivered: nu
 
 export function Mission() {
   const data = useMissionReport()
+  const design = useMission((s) => s.design)
   const launchMonth = useMission((s) => s.launchMonth)
   const resolved = useMission((s) => s.resolved)
   const recordEvent = useMission((s) => s.recordEvent)
@@ -332,6 +337,9 @@ export function Mission() {
   const live = evaluateMission(ctx, report, resolved)
   const timed = ctx.destination.difficulty !== 'Tutorial' && !sandbox
   const t = texts.ui.mission
+  const flatMap = (
+    <Trajectory progress={progress} glideMs={glideMs} phase={currentPhase} destinationName={ctx.destination.name} delay={ctx.destination.signalDelay} color={ctx.destination.map.color} />
+  )
 
   return (
     <section className="screen">
@@ -359,7 +367,21 @@ export function Mission() {
           </div>
 
           <div className="panel trajectory-panel">
-            <Trajectory progress={progress} glideMs={glideMs} phase={currentPhase} destinationName={ctx.destination.name} delay={ctx.destination.signalDelay} color={ctx.destination.map.color} />
+            {/* 3D map with the real spacecraft model; the flat 2D map while it loads or without WebGL. */}
+            <SceneBoundary fallback={flatMap}>
+              <Suspense fallback={flatMap}>
+                <MissionScene
+                  destinationId={ctx.destination.id}
+                  destinationName={ctx.destination.name}
+                  progress={progress}
+                  glideMs={glideMs}
+                  phase={currentPhase}
+                  design={design}
+                  orbitId={ctx.orbit.id}
+                />
+              </Suspense>
+            </SceneBoundary>
+            {currentPhase === 'operations' && <p className="trajectory-note mono">{fill(t.signal, { delay: ctx.destination.signalDelay })}</p>}
           </div>
 
           <LiveStats power={report.powerNeeded + '/' + report.powerAvailable} delivered={live.deliveredShare * 100} science={live.science} />
