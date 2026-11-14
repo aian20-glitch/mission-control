@@ -60,8 +60,10 @@ interface Telemetry {
   speed: number
 }
 
-// ~10 second launch cinematic: countdown, lift-off, camera follow, stage separation, orbit.
-export function Launch() {
+// ~10 second launch cinematic: countdown, lift-off, camera follow, stage separation, orbit, departure.
+// It ends by fading into the mission screen, which is already drawn underneath.
+// `onGone` is called when the film has fully faded out.
+export function Launch({ onGone }: { onGone: () => void }) {
   const data = useMissionReport()
   const beginMission = useMission((s) => s.beginMission)
   const [countdown, setCountdown] = useState('T-5')
@@ -70,18 +72,36 @@ export function Launch() {
 
   const rootRef = useRef<HTMLElement>(null)
   const timelineRef = useRef<gsap.core.Timeline | null>(null)
+  const fadeRef = useRef<gsap.core.Tween | null>(null)
   const finishedRef = useRef(false)
 
   const size = data ? rocketSize(data.ctx.launchVehicle.id) : 'light'
   const t = texts.ui.launch
 
-  function finish() {
+  // Start the mission under the film, then dissolve the film (gently zooming in, like flying into the screen).
+  function finish(skipped: boolean) {
     if (finishedRef.current) {
       return
     }
     finishedRef.current = true
-    timelineRef.current?.kill()
+    if (skipped) {
+      timelineRef.current?.kill()
+    }
     beginMission()
+    const root = rootRef.current
+    if (!root) {
+      onGone()
+      return
+    }
+    root.style.pointerEvents = 'none'
+    fadeRef.current = gsap.to(root, {
+      opacity: 0,
+      scale: 1.08,
+      filter: 'blur(8px)',
+      duration: skipped ? 0.6 : 1.3,
+      ease: 'power2.inOut',
+      onComplete: onGone,
+    })
   }
 
   useEffect(() => {
@@ -93,14 +113,14 @@ export function Launch() {
     const telemetryProxy = { time: 0, altitude: 0, speed: 0 }
     const pushTelemetry = () => setTelemetry({ ...telemetryProxy })
 
-    const tl = gsap.timeline({ onComplete: finish })
+    const tl = gsap.timeline({ onComplete: () => finish(false) })
     timelineRef.current = tl
 
     // Countdown T-5 .. T-0
     for (let i = 5; i >= 0; i--) {
-      tl.call(() => setCountdown(i === 0 ? t.ignition : 'T-' + i), [], (5 - i) * 0.55)
+      tl.call(() => setCountdown(i === 0 ? t.ignition : 'T-' + i), [], (5 - i) * 0.45)
     }
-    tl.addLabel('ignition', 2.75)
+    tl.addLabel('ignition', 2.25)
     tl.to(q('.rocket-lower .flame'), { scaleY: 1, opacity: 1, duration: 0.4, ease: 'power2.out' }, 'ignition')
     tl.to(q('.smoke-puff'), { scale: 1, opacity: 0.9, duration: 1.6, stagger: 0.04, ease: 'power2.out' }, 'ignition')
     tl.fromTo(q('.launch-rocket'), { x: -1.5 }, { x: 1.5, duration: 0.05, repeat: 30, yoyo: true, ease: 'none' }, 'ignition')
@@ -138,10 +158,19 @@ export function Launch() {
       setCountdown(t.orbit)
       setCaption(fill(t.inOrbit, { destination: data ? data.ctx.destination.name : '' }))
     }, [], 'orbit+=1.4')
-    tl.to({}, { duration: 1.2 })
+
+    // Departure: the upper stage fires again and the spacecraft heads off to the upper right,
+    // the same way it starts on the mission map. The film dissolves into the mission while it flies.
+    tl.addLabel('depart', 'orbit+=2')
+    tl.to(q('.flame-upper'), { scaleY: 1, opacity: 1, duration: 0.3, ease: 'power2.out' }, 'depart')
+    tl.to(q('.launch-rocket'), { x: '46vw', y: '-58vh', scale: 0.08, rotation: 58, duration: 2, ease: 'power2.in' }, 'depart')
+    tl.to(q('.launch-earth'), { y: '6vh', duration: 2.2, ease: 'power1.in' }, 'depart')
+    tl.to(q('.launch-hud'), { opacity: 0, duration: 0.6, ease: 'power1.out' }, 'depart+=0.5')
+    tl.call(() => finish(false), [], 'depart+=0.8')
 
     return () => {
       tl.kill()
+      fadeRef.current?.kill()
     }
     // The timeline is built once per mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -203,7 +232,7 @@ export function Launch() {
         </p>
       </div>
 
-      <button type="button" className="btn btn-quiet btn-sm launch-skip" onClick={finish}>
+      <button type="button" className="btn btn-quiet btn-sm launch-skip" onClick={() => finish(true)}>
         {texts.ui.skip}
       </button>
     </section>

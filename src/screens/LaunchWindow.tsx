@@ -95,13 +95,22 @@ export function LaunchWindow() {
 
           <Readout
             rows={[
-              { label: t.window, value: good ? t.openShort : t.poorShort, status: good ? 'ok' : 'warn' },
               { label: t.lift, value: num(report.massCapacity) + ' ' + kg + ' (' + Math.round(factor * 100) + '%)', status: factor < 0.9 ? 'warn' : 'ok' },
               { label: t.spacecraft, value: num(report.totalMass) + ' ' + kg, status: massOk ? 'ok' : 'over' },
               { label: t.trip, value: tripLabel },
               { label: t.arrival, value: destination.window.alwaysOpen ? monthLabel(month) : monthLabel(month + Math.round(trip)) },
             ]}
           />
+
+          <div className="launch-console panel">
+            <div>
+              <span className="eyebrow">{t.goNoGo}</span>
+              <StatusLights bars={report.bars} />
+            </div>
+            <HudButton variant="launch" disabled={!report.canLaunch} onClick={() => goTo('launch')}>
+              {t.launch}
+            </HudButton>
+          </div>
         </div>
       </div>
 
@@ -115,11 +124,6 @@ export function LaunchWindow() {
               {blockingIssue.text}
             </span>
           )}
-          <span className="eyebrow">{t.goNoGo}</span>
-          <StatusLights bars={report.bars} />
-          <HudButton variant="launch" disabled={!report.canLaunch} onClick={() => goTo('launch')}>
-            {t.launch}
-          </HudButton>
         </div>
       </div>
     </section>

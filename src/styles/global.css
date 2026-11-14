@@ -877,13 +877,14 @@ p {
   gap: 10px;
   padding: 3px 0;
   color: var(--text);
-  animation: lineIn var(--dur) var(--ease) both;
+  animation: lineIn 0.45s var(--ease) both;
 }
 
 @keyframes lineIn {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(6px);
+    filter: blur(2px);
   }
 }
 

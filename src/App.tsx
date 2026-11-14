@@ -27,7 +27,8 @@ function renderScreen(screen: Screen) {
     case 'window':
       return <LaunchWindow />
     case 'launch':
-      return <Launch />
+      // The launch film lives in its own layer (see App), so it can fade over the mission screen.
+      return null
     case 'mission':
       return <Mission />
     case 'debrief':
@@ -78,6 +79,14 @@ export function App() {
   const lang = useMission((s) => s.lang)
   const elapsed = useElapsed()
   const cinematic = screen === 'launch'
+  // The launch film stays on screen a little after the mission starts, while it fades out.
+  const [launchFading, setLaunchFading] = useState(false)
+  useEffect(() => {
+    if (screen === 'launch') {
+      setLaunchFading(true)
+    }
+  }, [screen])
+  const showLaunch = screen === 'launch' || (launchFading && screen === 'mission')
   const languageLocked = screen === 'mission' || screen === 'debrief'
 
   useEffect(() => {
@@ -114,6 +123,8 @@ export function App() {
       <main className="main" key={screen + '-' + lang}>
         {renderScreen(screen)}
       </main>
+
+      {showLaunch && <Launch onGone={() => setLaunchFading(false)} />}
 
       {!cinematic && (
         <footer className="footer">

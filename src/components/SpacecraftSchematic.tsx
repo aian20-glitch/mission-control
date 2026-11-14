@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { getPart, money, num, texts } from '../logic/data'
-import type { Design, OrbitId } from '../logic/types'
+import type { Design, OrbitId, Part } from '../logic/types'
 
 interface SchematicProps {
   design: Design
@@ -8,6 +8,7 @@ interface SchematicProps {
   hotPartId: string | null
   deadPartIds: string[]
   onHover: (partId: string | null) => void
+  onPick: (partId: string) => void
 }
 
 const BODY = '#d7d4cc'
@@ -150,6 +151,91 @@ function drawPart(partId: string): ReactNode {
   }
 }
 
+// How each part arrives on the drawing: it slides in from the side where it sits,
+// or unfolds sideways (solar wings, radar booms). It leaves the same way back.
+interface Motion {
+  unfold?: boolean
+  dx?: number
+  dy?: number
+}
+
+const MOTION: Record<string, Motion> = {
+  solar_s: { unfold: true },
+  solar_l: { unfold: true },
+  radar: { unfold: true },
+  rtg: { dx: -46, dy: 40 },
+  antenna_small: { dy: -48 },
+  antenna_hga: { dy: -56 },
+  camera: { dy: 44 },
+  spectrometer: { dy: 44 },
+  seismometer: { dy: 44 },
+  magnetometer: { dx: 46, dy: -46 },
+  heat_shield: { dy: 56 },
+  redundancy: { dx: -48 },
+  battery: { dx: 48 },
+}
+
+function motionStyle(partId: string): CSSProperties {
+  const motion = MOTION[partId] ?? {}
+  return { '--dx': (motion.dx ?? 0) + 'px', '--dy': (motion.dy ?? 0) + 'px' } as CSSProperties
+}
+
+function motionClass(partId: string): string {
+  const motion = MOTION[partId] ?? {}
+  return motion.unfold ? ' is-unfold' : ''
+}
+
+const LEAVE_MS = 420
+
+// Parts that were just removed stay on the drawing for a moment so they can fly away.
+function useLeavingParts(partIds: string[]): string[] {
+  const [leaving, setLeaving] = useState<string[]>([])
+  const previous = useRef<string[]>(partIds)
+  const key = partIds.join(',')
+
+  useEffect(() => {
+    const removed = previous.current.filter((id) => !partIds.includes(id))
+    previous.current = partIds
+    if (removed.length === 0) {
+      return
+    }
+    setLeaving((current) => [...current, ...removed])
+    window.setTimeout(() => {
+      setLeaving((current) => current.filter((id) => !removed.includes(id)))
+    }, LEAVE_MS)
+    // `key` stands for the list of ids.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key])
+
+  return leaving.filter((id) => !partIds.includes(id))
+}
+
+// A ring that runs out from the body each time a part docks.
+function useDockPulse(partIds: string[]): number {
+  const [pulse, setPulse] = useState(0)
+  const previous = useRef<string[]>(partIds)
+  const key = partIds.join(',')
+
+  useEffect(() => {
+    const added = partIds.filter((id) => !previous.current.includes(id))
+    previous.current = partIds
+    if (added.length > 0) {
+      setPulse((n) => n + 1)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key])
+
+  return pulse
+}
+
+// "+172" for a part that makes electricity, "−50" for one that uses it.
+function powerLabel(part: Part): string {
+  if (part.output) {
+    return '+' + part.output
+  }
+  return '−' + part.power
+}
+
 function Reticle() {
   const ticks: ReactNode[] = []
   for (let angle = 0; angle < 360; angle += 10) {
@@ -181,8 +267,10 @@ function Reticle() {
 }
 
 // Blueprint-style drawing of the spacecraft. New parts pop into place.
-export function SpacecraftSchematic({ design, orbitId, hotPartId, deadPartIds, onHover }: SchematicProps) {
+export function SpacecraftSchematic({ design, orbitId, hotPartId, deadPartIds, onHover, onPick }: SchematicProps) {
   const partIds = [design.power, ...design.extras, design.comms, ...design.instruments]
+  const leavingIds = useLeavingParts(partIds)
+  const pulse = useDockPulse(partIds)
   const isLander = orbitId === 'lander'
   const hotPart = hotPartId ? getPart(hotPartId) : null
 
@@ -198,8 +286,13 @@ export function SpacecraftSchematic({ design, orbitId, hotPartId, deadPartIds, o
             <ellipse cx="256" cy="268" rx="9" ry="3" fill={BODY_DARK} />
           </g>
         )}
+        {leavingIds.map((id) => (
+          <g key={'out-' + id} className={'sc-part is-leaving' + motionClass(id)} style={motionStyle(id)} aria-hidden="true">
+            {drawPart(id)}
+          </g>
+        ))}
         {partIds.map((id) => {
-          let className = 'sc-part'
+          let className = 'sc-part' + motionClass(id)
           if (id === hotPartId) {
             className = className + ' is-hot'
           }
@@ -207,11 +300,23 @@ export function SpacecraftSchematic({ design, orbitId, hotPartId, deadPartIds, o
             className = className + ' is-dead'
           }
           return (
-            <g key={id} className={className} onMouseEnter={() => onHover(id)} onMouseLeave={() => onHover(null)}>
+            <g
+              key={id}
+              className={className}
+              style={motionStyle(id)}
+              onMouseEnter={() => onHover(id)}
+              onMouseLeave={() => onHover(null)}
+              onClick={() => onPick(id)}
+            >
+              {/* A wide invisible copy of the drawing: an easier target for the mouse. */}
+              <g className="sc-hit" aria-hidden="true">
+                {drawPart(id)}
+              </g>
               {drawPart(id)}
             </g>
           )
         })}
+        {pulse > 0 && <circle key={'pulse-' + pulse} cx="200" cy="200" r="34" className="dock-pulse" />}
         <g className="sc-bus" onMouseEnter={() => onHover(null)}>
           <rect x="170" y="170" width="60" height="60" rx="5" fill={BODY} stroke={LINE} strokeWidth="1" />
           <rect x="178" y="178" width="44" height="44" rx="3" fill="none" stroke={BODY_DARK} strokeWidth="0.8" />
@@ -224,7 +329,7 @@ export function SpacecraftSchematic({ design, orbitId, hotPartId, deadPartIds, o
           <>
             <span className="schematic-caption-name">▸ {hotPart.name.toUpperCase()}</span>
             <span>
-              {num(hotPart.mass)} {texts.units.kg} · {hotPart.power} {texts.units.watt} · {money(hotPart.cost)}
+              {num(hotPart.mass)} {texts.units.kg} · {powerLabel(hotPart)} {texts.units.watt} · {money(hotPart.cost)}
             </span>
           </>
         ) : (

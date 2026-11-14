@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { HudButton } from '../components/HudButton'
 import { MissionLog, type LogLine, type LogTone } from '../components/MissionLog'
 import { ScreenHeader, stepLabel } from '../components/ScreenHeader'
+import { useSmoothValue } from '../components/useSmoothValue'
 import { texts, fill } from '../logic/data'
 import { buildMissionPlan, resolveAuto, resolveChoice } from '../logic/events'
 import { formatLifetime, transferMonths, bestWindowMonth } from '../logic/resources'
@@ -138,35 +139,73 @@ function bezierPoint(t: number): { x: number; y: number } {
   return { x, y }
 }
 
-function Trajectory({ progress, phase, destinationName, delay, color }: { progress: number; phase: MissionPhase; destinationName: string; delay: string; color: string }) {
+interface TrajectoryProps {
+  progress: number
+  glideMs: number
+  phase: MissionPhase
+  destinationName: string
+  delay: string
+  color: string
+}
+
+// The spacecraft glides along the path; each log step moves it a little further.
+function Trajectory({ progress, glideMs, phase, destinationName, delay, color }: TrajectoryProps) {
   const path = 'M60,150 C200,20 420,20 560,110'
   const showSignal = phase === 'operations'
-  const craft = bezierPoint(progress)
+  const shown = useSmoothValue(progress, glideMs)
+  const craft = bezierPoint(shown)
   return (
     <svg className="trajectory" viewBox="0 0 620 200" role="img" aria-label={fill(texts.ui.mission.path, { name: destinationName })}>
       <path d={path} fill="none" stroke="rgba(255,255,255,0.14)" strokeDasharray="3 6" />
-      <path d={path} fill="none" stroke="#5dcaa5" strokeWidth="1.6" pathLength={1} strokeDasharray="1" strokeDashoffset={1 - progress} className="trajectory-done" />
+      <path d={path} fill="none" stroke="#5dcaa5" strokeWidth="1.6" pathLength={1} strokeDasharray="1" strokeDashoffset={1 - shown} />
       <circle cx="60" cy="150" r="12" fill="#4f9be8" />
       <text x="60" y="185" textAnchor="middle" className="map-label">
         {texts.ui.window.earth}
       </text>
-      <circle cx="560" cy="110" r="14" fill={color} />
+      <circle cx="560" cy="110" r="14" fill={color} className={shown > 0.97 ? 'trajectory-target is-reached' : 'trajectory-target'} />
       <text x="560" y="150" textAnchor="middle" className="map-label">
         {destinationName}
       </text>
+      <circle cx={craft.x} cy={craft.y} r="11" className="trajectory-halo" />
       <circle cx={craft.x} cy={craft.y} r="5" fill="#ffffff" className="trajectory-craft" />
-      {showSignal &&
-        [0, 1, 2].map((i) => (
-          <circle key={i} r="3" fill="#5dcaa5">
-            <animateMotion dur="3s" begin={i + 's'} repeatCount="indefinite" path="M560,110 C420,170 200,190 60,150" />
-          </circle>
-        ))}
       {showSignal && (
-        <text x="310" y="196" textAnchor="middle" className="map-label">
-          {fill(texts.ui.mission.signal, { delay })}
-        </text>
+        <g className="trajectory-signal">
+          {[0, 1, 2].map((i) => (
+            <circle key={i} r="3" fill="#5dcaa5">
+              <animateMotion dur="3s" begin={i + 's'} repeatCount="indefinite" path="M560,110 C420,170 200,190 60,150" />
+            </circle>
+          ))}
+          <text x="310" y="196" textAnchor="middle" className="map-label">
+            {fill(texts.ui.mission.signal, { delay })}
+          </text>
+        </g>
       )}
     </svg>
+  )
+}
+
+// Three live numbers under the path. Data and science count up or down instead of jumping.
+function LiveStats({ power, delivered, science }: { power: string; delivered: number; science: number }) {
+  const shownDelivered = useSmoothValue(delivered, 700)
+  const shownScience = useSmoothValue(science, 700)
+  const t = texts.ui.mission
+  return (
+    <div className="live-stats">
+      <div className="live-stat panel">
+        <span className="eyebrow">{t.power}</span>
+        <span className="live-value mono">
+          {power} {texts.units.watt}
+        </span>
+      </div>
+      <div className="live-stat panel">
+        <span className="eyebrow">{t.dataHome}</span>
+        <span className="live-value mono">{Math.round(shownDelivered)}%</span>
+      </div>
+      <div className="live-stat panel">
+        <span className="eyebrow">{t.forecast}</span>
+        <span className="live-value mono">{Math.round(shownScience)}/100</span>
+      </div>
+    </div>
   )
 }
 
@@ -272,16 +311,23 @@ export function Mission() {
 
   const currentPhase: MissionPhase = index > 0 ? plan[Math.min(index, plan.length) - 1].phase : 'launch'
   const phaseIndex = PHASES.indexOf(currentPhase)
+  // Where the spacecraft is on the path (0 = Earth, 1 = target). It moves a little with every step.
   let progress = 0
-  if (currentPhase === 'cruise') {
+  if (currentPhase === 'launch') {
+    const launchSteps = plan.filter((s) => s.phase === 'launch').length
+    const before = plan.slice(0, index).filter((s) => s.phase === 'launch').length
+    progress = 0.06 * (before / Math.max(1, launchSteps))
+  } else if (currentPhase === 'cruise') {
     const cruiseSteps = plan.filter((s) => s.phase === 'cruise').length
     const before = plan.slice(0, index).filter((s) => s.phase === 'cruise').length
-    progress = 0.08 + 0.8 * (before / Math.max(1, cruiseSteps))
-  } else if (currentPhase === 'arrival' || currentPhase === 'operations') {
-    progress = 1
+    progress = 0.08 + 0.88 * (before / Math.max(1, cruiseSteps))
   } else {
-    progress = 0.04
+    progress = 1
   }
+  // One step lasts this long, so the spacecraft never stops between steps.
+  const glideMs = fast ? STEP_MS / 4 : STEP_MS
+  // The bar under the phases fills smoothly from phase to phase.
+  const phaseFill = done ? 1 : (phaseIndex + 0.5) / PHASES.length
 
   const live = evaluateMission(ctx, report, resolved)
   const timed = ctx.destination.difficulty !== 'Tutorial' && !sandbox
@@ -303,6 +349,7 @@ export function Mission() {
       <div className="mission-layout">
         <div className="mission-left">
           <div className="phase-track panel">
+            <span className="phase-progress" style={{ transform: 'scaleX(' + phaseFill + ')' }} aria-hidden="true" />
             {PHASES.map((phase, i) => (
               <div key={phase} className={'phase' + (i < phaseIndex || done ? ' is-done' : '') + (i === phaseIndex && !done ? ' is-current' : '')}>
                 <span className="phase-dot" />
@@ -312,25 +359,10 @@ export function Mission() {
           </div>
 
           <div className="panel trajectory-panel">
-            <Trajectory progress={progress} phase={currentPhase} destinationName={ctx.destination.name} delay={ctx.destination.signalDelay} color={ctx.destination.map.color} />
+            <Trajectory progress={progress} glideMs={glideMs} phase={currentPhase} destinationName={ctx.destination.name} delay={ctx.destination.signalDelay} color={ctx.destination.map.color} />
           </div>
 
-          <div className="live-stats">
-            <div className="live-stat panel">
-              <span className="eyebrow">{t.power}</span>
-              <span className="live-value mono">
-                {report.powerNeeded}/{report.powerAvailable} {texts.units.watt}
-              </span>
-            </div>
-            <div className="live-stat panel">
-              <span className="eyebrow">{t.dataHome}</span>
-              <span className="live-value mono">{Math.round(live.deliveredShare * 100)}%</span>
-            </div>
-            <div className="live-stat panel">
-              <span className="eyebrow">{t.forecast}</span>
-              <span className="live-value mono">{live.science}/100</span>
-            </div>
-          </div>
+          <LiveStats power={report.powerNeeded + '/' + report.powerAvailable} delivered={live.deliveredShare * 100} science={live.science} />
 
           {why && (
             <div className={'why-card panel tone-' + why.outcome.quality} key={why.title}>
