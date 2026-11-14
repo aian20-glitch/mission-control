@@ -59,7 +59,7 @@
     "noInstruments": "No instruments: the spacecraft will fly, but bring back no science.",
     "lostPower": "Power at {destination}: {available} W. Below survival level. The spacecraft froze.",
     "lostPowerWhy": "Too little power to keep the spacecraft alive. Solar panels lose strength fast far from the Sun.",
-    "powerCheck": "Arrived at {destination}. Switching from cruise power to science power..."
+    "powerCheck": "Arrived at {destination}. Switching from cruise power to science power…"
   },
   "log": {
     "launch": [
@@ -198,7 +198,7 @@
     "approx": "APPROX. VALUES",
     "met": "MET",
     "back": "Back",
-    "continue": "Continue",
+    "continue": "Next: Orbit",
     "skip": "Skip",
     "stepOf": "Step {n} of 6 · {name}",
     "steps": {
@@ -218,7 +218,7 @@
     },
     "title": {
       "online": "systems online",
-      "start": "Start mission",
+      "start": "Start Mission",
       "sandbox": "Sandbox",
       "team": "Team mode · soon",
       "soon": "Coming soon",
@@ -229,7 +229,7 @@
       "duration": "~5 MIN"
     },
     "objective": {
-      "heading": "Choose a target",
+      "heading": "Choose a Target",
       "sandboxChip": "SANDBOX · NO BUDGET LIMIT",
       "targets": "Targets",
       "budget": "Budget",
@@ -241,7 +241,7 @@
       "fact": "Did you know"
     },
     "orbit": {
-      "heading": "How do we meet {name}?",
+      "heading": "How Do We Meet {name}?",
       "group": "Orbit type",
       "science": "Science",
       "lifetime": "Lifetime",
@@ -251,10 +251,10 @@
       "good": "good",
       "weak": "weak",
       "needs": "Needs: {parts}",
-      "next": "Build the spacecraft"
+      "next": "Build the Spacecraft"
     },
     "assembly": {
-      "heading": "Build the spacecraft",
+      "heading": "Build the Spacecraft",
       "notes": "Flight notes",
       "allGood": "All systems nominal. Ready for the launch window.",
       "landerOnly": "lander only",
@@ -263,7 +263,7 @@
       "tooSmall": "too small",
       "massChip": "DRY {dry} KG · FUELED {total} KG",
       "slots": "Part slots",
-      "next": "Next: launch window",
+      "next": "Next: Launch Window",
       "fitsGoal": "★ fits goal",
       "lifts": "lifts {n} kg",
       "powerHere": "+{n} W here",
@@ -276,7 +276,7 @@
       "operations": "Operations ({n} months)"
     },
     "window": {
-      "heading": "Pick a launch date",
+      "heading": "Pick a Launch Date",
       "date": "Launch date",
       "open": "WINDOW OPEN",
       "poor": "POOR WINDOW",
@@ -290,13 +290,18 @@
       "arrival": "Arrival",
       "goNoGo": "Go / No-go",
       "launch": "Launch",
-      "back": "Back to build",
+      "back": "Back to Build",
       "mapLabel": "Map of planet positions and transfer path",
       "whereLater": "where it will be when you arrive",
       "earth": "Earth",
       "moon": "Moon",
       "jupiter": "Jupiter",
-      "moonTrip": "about 4 days · 384,400 km"
+      "moonTrip": "about 4 days · 384,400 km",
+      "sun": "Sun",
+      "launchPoint": "launch",
+      "arrivalPoint": "arrival",
+      "legendPath": "spacecraft path",
+      "legendMove": "how far the planet moves during the trip"
     },
     "launch": {
       "ignition": "IGNITION",
@@ -311,7 +316,7 @@
       "speed": "Speed"
     },
     "mission": {
-      "heading": "{name} mission in progress",
+      "heading": "{name} Mission in Progress",
       "speed": "Speed ×{n}",
       "day": "DAY {n}",
       "end": "END",
@@ -328,15 +333,15 @@
       "forecast": "Science forecast",
       "why": "Why it matters · {title}",
       "summary": "{rocket} · {orbit} · {n} INSTRUMENTS",
-      "investigate": "Investigate: mission report",
-      "report": "Mission report",
+      "investigate": "Investigate: Mission Report",
+      "report": "Mission Report",
       "log": "Mission log",
       "live": "LIVE",
       "powerFailure": "Power failure"
     },
     "debrief": {
       "step": "Debrief",
-      "heading": "Mission report",
+      "heading": "Mission Report",
       "lost": "Mission lost",
       "outstanding": "Outstanding mission",
       "success": "Mission success",
@@ -359,8 +364,8 @@
       "othersLead": "There is rarely one perfect answer. These also reach the goal:",
       "altMeta": "{cost} · {mass} kg · science {science}",
       "yours": "Your design",
-      "newTarget": "New target",
-      "retry": "Try again with changes"
+      "newTarget": "New Target",
+      "retry": "Try Again with Changes"
     },
     "onboarding": {
       "label": "Mission briefing",

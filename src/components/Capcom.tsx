@@ -12,8 +12,14 @@ export function Capcom({ text, callsign = 'CAPCOM' }: CapcomProps) {
     <div className="capcom" aria-live="polite">
       <span className="capcom-sign">{callsign}</span>
       <span className="capcom-text">
-        {shown}
-        {!done && <span className="cursor" />}
+        {/* Invisible full line keeps the box at its final size while the text types out. */}
+        <span className="capcom-ghost" aria-hidden="true">
+          {text}
+        </span>
+        <span className="capcom-typed">
+          {shown}
+          {!done && <span className="cursor" />}
+        </span>
       </span>
     </div>
   )

@@ -138,7 +138,7 @@
             ]
           },
           "quality": "good",
-          "log": "Heat shield glowing at 1,300 °C... parachute out... rockets firing... TOUCHDOWN!",
+          "log": "Heat shield glowing at 1,300 °C… parachute out… rockets firing… TOUCHDOWN!",
           "why": "The heat shield let the air slow you down from 20,000 km/h.",
           "effects": {}
         },
@@ -172,7 +172,7 @@
       "outcomes": [
         {
           "quality": "info",
-          "log": "Engine burning... 100 meters... 10 meters... contact light. TOUCHDOWN!",
+          "log": "Engine burning… 100 meters… 10 meters… contact light. TOUCHDOWN!",
           "why": "With no air, every bit of braking comes from fuel. That's why landers are so heavy.",
           "effects": {}
         }

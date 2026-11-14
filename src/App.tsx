@@ -97,8 +97,10 @@ export function App() {
               <ellipse cx="32" cy="32" rx="26" ry="9" fill="none" stroke="#5DCAA5" strokeWidth="2" opacity=".6" transform="rotate(-25 32 32)" />
               <circle cx="52" cy="22" r="3.5" fill="#E24B4A" />
             </svg>
-            <span>{texts.game.title}</span>
-            <span className="brand-station">DSS-07</span>
+            <span translate="no">{texts.game.title}</span>
+            <span className="brand-station" translate="no">
+              DSS-07
+            </span>
           </button>
           {screen !== 'title' ? <StepBar current={screen} /> : <span />}
           <div className="header-right">
@@ -115,7 +117,7 @@ export function App() {
 
       {!cinematic && (
         <footer className="footer">
-          <span className="callsigns">
+          <span className="callsigns" translate="no">
             {CALLSIGNS.map((c, i) => (
               <span key={c} className={i === 0 ? 'callsign-active' : undefined}>
                 {c}

@@ -110,7 +110,11 @@ export function LaunchWindow() {
           {t.back}
         </HudButton>
         <div className="screen-actions-right">
-          {blockingIssue && <span className="action-reason">{blockingIssue.text}</span>}
+          {blockingIssue && (
+            <span className="action-reason" title={blockingIssue.text}>
+              {blockingIssue.text}
+            </span>
+          )}
           <span className="eyebrow">{t.goNoGo}</span>
           <StatusLights bars={report.bars} />
           <HudButton variant="launch" disabled={!report.canLaunch} onClick={() => goTo('launch')}>

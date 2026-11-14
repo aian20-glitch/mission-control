@@ -503,19 +503,52 @@
   color: var(--accent);
 }
 
-.slot-hint {
-  padding: 12px 16px 4px;
-  font-size: 13px;
-  color: var(--text-dim);
+.part-list {
+  position: relative; /* sections measure their offsetTop from here */
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 0 12px 14px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
+  max-height: 560px;
 }
 
-.part-list {
+.part-section {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 10px 12px 14px;
-  overflow-y: auto;
-  max-height: 560px;
+}
+
+/* The section title stays on top while its parts scroll under it. */
+.part-section-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 -12px;
+  padding: 12px 16px 8px;
+  background: rgba(12, 21, 29, 0.97);
+  border-bottom: 1px solid var(--line);
+}
+
+.part-section-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.part-section-hint {
+  font-size: 13px;
+  color: var(--text-dim);
 }
 
 .part-card {
@@ -610,8 +643,15 @@
 .action-reason {
   max-width: 360px;
   font-size: 12px;
+  line-height: 1.4;
   color: #ff8d8c;
   text-align: right;
+  /* Two lines at most, so the action bar keeps its height. The full text is in the flight notes. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
 }
 
 /* ---------- Launch window ---------- */
@@ -624,9 +664,38 @@
 }
 
 .window-map {
+  position: relative;
   display: grid;
   place-items: center;
   padding: 12px;
+}
+
+.map-legend {
+  position: absolute;
+  left: 18px;
+  bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  pointer-events: none;
+}
+
+.map-legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.map-legend svg {
+  width: 16px;
+  height: 12px;
+  flex-shrink: 0;
 }
 
 .orbit-map {
@@ -639,6 +708,24 @@
   font-family: var(--font-mono);
   font-size: 11px;
   fill: var(--text-dim);
+}
+
+.map-label-strong {
+  fill: var(--text);
+}
+
+.map-label-faint {
+  fill: var(--text-faint);
+}
+
+.target-move {
+  animation: fadeIn 0.9s var(--ease) 0.3s both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map-craft {
+    display: none;
+  }
 }
 
 .transfer-path {
@@ -662,6 +749,7 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  overscroll-behavior: contain;
 }
 
 .window-date {
@@ -1471,6 +1559,10 @@
   .debrief-grid {
     grid-template-columns: 1fr;
   }
+  .map-legend {
+    position: static;
+    justify-self: start;
+  }
 }
 
 @media (max-width: 720px) {
@@ -1539,11 +1631,13 @@
     font-size: clamp(22px, 3.4vh, 34px);
   }
 
+  /* Fixed height: a longer warning never pushes the content above it. */
   .screen-actions {
     position: static;
     flex-shrink: 0;
+    height: clamp(64px, 10vh, 80px);
     margin: auto calc(-1 * var(--gutter)) 0;
-    padding: clamp(8px, 1.4vh, 14px) var(--gutter) clamp(12px, 2vh, 18px);
+    padding: 0 var(--gutter);
     background: none;
   }
 
@@ -1738,6 +1832,22 @@
     padding: clamp(14px, 2.2vh, 20px);
   }
 
+  /* The readout grows to the bottom of the column, so both columns end on one line. */
+  .window-side .readout {
+    flex: 1 0 auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .window-side .readout-row {
+    flex: 1 0 auto;
+    align-items: center;
+  }
+
+  .window-side .readout-dots {
+    transform: none;
+  }
+
   .window-note {
     margin-top: clamp(8px, 1.4vh, 14px);
   }
@@ -1803,5 +1913,6 @@
   .debrief-column {
     min-height: 0;
     overflow-y: auto;
+    overscroll-behavior: contain;
   }
 }
