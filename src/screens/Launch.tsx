@@ -1,58 +1,36 @@
-import { useEffect, useRef, useState } from 'react'
+import { Component, Suspense, lazy, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import gsap from 'gsap'
 import { Readout } from '../components/Readout'
 import { fill, num, texts } from '../logic/data'
 import { useMission, useMissionReport } from '../store/useMission'
+import { createDirector, smoothStep } from '../three/launch/director'
+import { loadLaunchScene } from '../three/preload'
 
-type RocketSize = 'light' | 'medium' | 'heavy'
+const LaunchScene = lazy(loadLaunchScene)
 
-function rocketSize(partId: string): RocketSize {
-  if (partId === 'lv_heavy') {
-    return 'heavy'
-  }
-  if (partId === 'lv_medium') {
-    return 'medium'
-  }
-  return 'light'
+// When each part of the film happens, in seconds from the start.
+const AT = {
+  ignition: 1.7,
+  liftoff: 2.3,
+  climb: 4.5,
+  maxQ: 4.9,
+  haze: 5.7,
+  space: 6.15,
+  boosters: 6.9,
+  meco: 7.5,
+  stage: 7.7,
+  upper: 8.1,
+  fairing: 8.6,
+  upperOff: 9.8,
+  craft: 10.0,
+  deploy: 10.4,
+  depart: 11.6,
+  morph: 13.6,
 }
 
-// Upper stage + payload fairing.
-function UpperStage() {
-  return (
-    <svg viewBox="0 0 40 120" className="rocket-upper-svg" aria-hidden="true">
-      <path d="M20,0 C30,14 33,30 33,46 L33,70 L7,70 L7,46 C7,30 10,14 20,0 Z" fill="#eceae4" />
-      <rect x="7" y="58" width="26" height="3" fill="#1b2026" />
-      <rect x="9" y="70" width="22" height="50" fill="#e4e2dc" />
-      <rect x="9" y="100" width="22" height="4" fill="#1b2026" />
-    </svg>
-  )
-}
+const MORPH_SECONDS = 1.8
 
-// First stage, plus side boosters or side cores.
-function LowerStage({ size }: { size: RocketSize }) {
-  return (
-    <svg viewBox="0 0 120 220" className="rocket-lower-svg" aria-hidden="true">
-      {size === 'medium' && (
-        <>
-          <path d="M34,90 L42,78 L42,200 L34,200 Z" fill="#d9d6ce" />
-          <path d="M86,90 L78,78 L78,200 L86,200 Z" fill="#d9d6ce" />
-        </>
-      )}
-      {size === 'heavy' && (
-        <>
-          <path d="M22,40 C22,30 26,24 31,20 C36,24 40,30 40,40 L40,206 L22,206 Z" fill="#e4e2dc" />
-          <path d="M80,40 C80,30 84,24 89,20 C94,24 98,30 98,40 L98,206 L80,206 Z" fill="#e4e2dc" />
-          <rect x="22" y="60" width="18" height="4" fill="#1b2026" />
-          <rect x="80" y="60" width="18" height="4" fill="#1b2026" />
-        </>
-      )}
-      <rect x="49" y="0" width="22" height="210" fill="#efede7" />
-      <rect x="49" y="40" width="22" height="5" fill="#1b2026" />
-      <rect x="49" y="150" width="22" height="3" fill="#1b2026" />
-      <path d="M49,210 L71,210 L74,220 L46,220 Z" fill="#3b4048" />
-    </svg>
-  )
-}
+type MilestoneKey = 'liftoff' | 'maxQ' | 'boosters' | 'stage' | 'fairing' | 'craft' | 'depart'
 
 interface Telemetry {
   time: number
@@ -60,181 +38,392 @@ interface Telemetry {
   speed: number
 }
 
-// ~10 second launch cinematic: countdown, lift-off, camera follow, stage separation, orbit, departure.
-// It ends by fading into the mission screen, which is already drawn underneath.
-// `onGone` is called when the film has fully faded out.
+// If WebGL is not available, the film is skipped instead of breaking the game.
+class SceneBoundary extends Component<{ onError: () => void; children: ReactNode }, { failed: boolean }> {
+  state = { failed: false }
+
+  static getDerivedStateFromError() {
+    return { failed: true }
+  }
+
+  componentDidCatch() {
+    this.props.onError()
+  }
+
+  render() {
+    return this.state.failed ? null : this.props.children
+  }
+}
+
+// The launch film (3D): countdown, lift-off, climb through the clouds, stage separation in space,
+// the spacecraft unfolding and leaving Earth. At the end the picture shrinks into the path panel
+// of the mission screen, which is already drawn underneath. `onGone` is called when it has faded out.
 export function Launch({ onGone }: { onGone: () => void }) {
   const data = useMissionReport()
+  const design = useMission((s) => s.design)
   const beginMission = useMission((s) => s.beginMission)
+  const director = useMemo(() => createDirector(), [])
+
+  const [ready, setReady] = useState(false)
   const [countdown, setCountdown] = useState('T-5')
   const [caption, setCaption] = useState('')
+  const [reached, setReached] = useState(0)
   const [telemetry, setTelemetry] = useState<Telemetry>({ time: 0, altitude: 0, speed: 0 })
+  const [leaving, setLeaving] = useState(false)
 
   const rootRef = useRef<HTMLElement>(null)
+  const hazeRef = useRef<HTMLDivElement>(null)
+  const hudRef = useRef<HTMLDivElement>(null)
   const timelineRef = useRef<gsap.core.Timeline | null>(null)
-  const fadeRef = useRef<gsap.core.Tween | null>(null)
+  const tweensRef = useRef<gsap.core.Tween[]>([])
   const finishedRef = useRef(false)
 
-  const size = data ? rocketSize(data.ctx.launchVehicle.id) : 'light'
   const t = texts.ui.launch
+  const hasBoosters = data ? data.ctx.launchVehicle.id !== 'lv_light' : false
+  const milestones: MilestoneKey[] = hasBoosters
+    ? ['liftoff', 'maxQ', 'boosters', 'stage', 'fairing', 'craft', 'depart']
+    : ['liftoff', 'maxQ', 'stage', 'fairing', 'craft', 'depart']
+  const milestoneLabels: Record<MilestoneKey, string> = {
+    liftoff: t.msLiftoff,
+    maxQ: t.msMaxQ,
+    boosters: t.msBoosters,
+    stage: t.msStage,
+    fairing: t.msFairing,
+    craft: t.msCraft,
+    depart: t.msDepart,
+  }
 
-  // Start the mission under the film, then dissolve the film (gently zooming in, like flying into the screen).
-  function finish(skipped: boolean) {
+  function reach(key: MilestoneKey) {
+    setReached(milestones.indexOf(key) + 1)
+  }
+
+  function fadeOut(seconds: number) {
+    const root = rootRef.current
+    if (!root) {
+      onGone()
+      return
+    }
+    tweensRef.current.push(gsap.to(root, { opacity: 0, duration: seconds, ease: 'power1.out', onComplete: onGone }))
+  }
+
+  // Skip: start the mission at once and fade the film away.
+  function skip() {
     if (finishedRef.current) {
       return
     }
     finishedRef.current = true
-    if (skipped) {
-      timelineRef.current?.kill()
+    timelineRef.current?.kill()
+    setLeaving(true)
+    beginMission()
+    fadeOut(0.5)
+  }
+
+  // The end of the film: the mission screen appears underneath and the picture shrinks
+  // into its path panel, with the 3D Earth landing on the Earth of the 2D map. Then it fades.
+  function shrinkIntoMission() {
+    if (finishedRef.current) {
+      return
     }
+    finishedRef.current = true
+    setLeaving(true)
     beginMission()
     const root = rootRef.current
     if (!root) {
       onGone()
       return
     }
-    root.style.pointerEvents = 'none'
-    fadeRef.current = gsap.to(root, {
-      opacity: 0,
-      scale: 1.08,
-      filter: 'blur(8px)',
-      duration: skipped ? 0.6 : 1.3,
-      ease: 'power2.inOut',
-      onComplete: onGone,
-    })
-  }
-
-  useEffect(() => {
-    const root = rootRef.current
-    if (!root) {
-      return
-    }
-    const q = gsap.utils.selector(root)
-    const telemetryProxy = { time: 0, altitude: 0, speed: 0 }
-    const pushTelemetry = () => setTelemetry({ ...telemetryProxy })
-
-    const tl = gsap.timeline({ onComplete: () => finish(false) })
-    timelineRef.current = tl
-
-    // Countdown T-5 .. T-0
-    for (let i = 5; i >= 0; i--) {
-      tl.call(() => setCountdown(i === 0 ? t.ignition : 'T-' + i), [], (5 - i) * 0.45)
-    }
-    tl.addLabel('ignition', 2.25)
-    tl.to(q('.rocket-lower .flame'), { scaleY: 1, opacity: 1, duration: 0.4, ease: 'power2.out' }, 'ignition')
-    tl.to(q('.smoke-puff'), { scale: 1, opacity: 0.9, duration: 1.6, stagger: 0.04, ease: 'power2.out' }, 'ignition')
-    tl.fromTo(q('.launch-rocket'), { x: -1.5 }, { x: 1.5, duration: 0.05, repeat: 30, yoyo: true, ease: 'none' }, 'ignition')
-
-    // Lift-off and climb: the world drops away (camera follows the rocket).
-    tl.addLabel('liftoff', 'ignition+=0.7')
-    tl.call(() => {
-      setCountdown(t.liftoff)
-      setCaption(fill(texts.log.launch[1].text, { rocket: data ? data.ctx.launchVehicle.name : '' }))
-    }, [], 'liftoff')
-    tl.to(q('.launch-rocket'), { y: '-22vh', duration: 2.2, ease: 'power2.in' }, 'liftoff')
-    tl.to(q('.launch-world'), { y: '140vh', duration: 6.5, ease: 'power2.in' }, 'liftoff+=0.6')
-    tl.to(q('.launch-sky'), { opacity: 0, duration: 5, ease: 'power1.in' }, 'liftoff+=1')
-    tl.to(telemetryProxy, { time: 160, altitude: 70, speed: 2300, duration: 3.4, ease: 'power2.in', onUpdate: pushTelemetry }, 'liftoff')
-
-    tl.call(() => setCaption(t.maxQ), [], 'liftoff+=1.6')
-
-    // Stage separation: the empty first stage falls away.
-    tl.addLabel('separation', 'liftoff+=3.4')
-    tl.call(() => {
-      setCountdown(t.stageSep)
-      setCaption(t.separation)
-    }, [], 'separation')
-    tl.to(q('.rocket-lower'), { y: '60vh', rotation: -18, opacity: 0, duration: 2.4, ease: 'power1.in' }, 'separation')
-    tl.to(q('.flame-upper'), { scaleY: 1, opacity: 1, duration: 0.3, ease: 'power2.out' }, 'separation+=0.4')
-    tl.to(telemetryProxy, { time: 480, altitude: 180, speed: 7500, duration: 2.4, ease: 'power1.inOut', onUpdate: pushTelemetry }, 'separation')
-
-    // Orbit: tilt over and zoom out.
-    tl.addLabel('orbit', 'separation+=2')
-    tl.to(q('.launch-rocket'), { rotation: 62, scale: 0.45, y: '-30vh', x: '18vw', duration: 2.4, ease: 'power2.inOut' }, 'orbit')
-    tl.to(telemetryProxy, { time: 530, altitude: 200, speed: 7800, duration: 1.6, ease: 'power1.out', onUpdate: pushTelemetry }, 'orbit+=0.4')
-    tl.to(q('.launch-earth'), { opacity: 1, duration: 2.2, ease: 'power1.out' }, 'orbit')
-    tl.to(q('.flame-upper'), { scaleY: 0, opacity: 0, duration: 0.4 }, 'orbit+=1.6')
-    tl.call(() => {
-      setCountdown(t.orbit)
-      setCaption(fill(t.inOrbit, { destination: data ? data.ctx.destination.name : '' }))
-    }, [], 'orbit+=1.4')
-
-    // Departure: the upper stage fires again and the spacecraft heads off to the upper right,
-    // the same way it starts on the mission map. The film dissolves into the mission while it flies.
-    tl.addLabel('depart', 'orbit+=2')
-    tl.to(q('.flame-upper'), { scaleY: 1, opacity: 1, duration: 0.3, ease: 'power2.out' }, 'depart')
-    tl.to(q('.launch-rocket'), { x: '46vw', y: '-58vh', scale: 0.08, rotation: 58, duration: 2, ease: 'power2.in' }, 'depart')
-    tl.to(q('.launch-earth'), { y: '6vh', duration: 2.2, ease: 'power1.in' }, 'depart')
-    tl.to(q('.launch-hud'), { opacity: 0, duration: 0.6, ease: 'power1.out' }, 'depart+=0.5')
-    tl.call(() => finish(false), [], 'depart+=0.8')
-
-    return () => {
-      tl.kill()
-      fadeRef.current?.kill()
-    }
-    // The timeline is built once per mount.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  const minutes = Math.floor(telemetry.time / 60)
-  const seconds = Math.floor(telemetry.time % 60)
-  const smoke = []
-  for (let i = 0; i < 18; i++) {
-    const side = i % 2 === 0 ? -1 : 1
-    smoke.push(
-      <span
-        key={i}
-        className="smoke-puff"
-        style={{
-          left: 50 + side * (4 + (i * 7) % 26) + '%',
-          bottom: (i % 5) * 10 - 10 + 'px',
-          width: 90 + (i % 4) * 40 + 'px',
-          height: 90 + (i % 4) * 40 + 'px',
-        }}
-      />,
+    // Wait two frames, so the mission screen is on the page and can be measured.
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        const panel = document.querySelector('.trajectory-panel')
+        if (!panel) {
+          fadeOut(0.6)
+          return
+        }
+        const progress = { value: 0 }
+        tweensRef.current.push(
+          gsap.to(progress, {
+            value: 1,
+            duration: MORPH_SECONDS,
+            ease: 'none',
+            onUpdate: () => {
+              // Measured every frame: the mission screen is still settling into place.
+              const box = panel.getBoundingClientRect()
+              const earth = document.querySelector('.trajectory-earth')
+              if (earth) {
+                const e = earth.getBoundingClientRect()
+                director.morphEarth = { x: e.left + e.width / 2, y: e.top + e.height / 2, r: e.width / 2 }
+              }
+              director.morph = progress.value
+              const m = smoothStep(progress.value)
+              const top = box.top * m
+              const left = box.left * m
+              const right = (window.innerWidth - box.right) * m
+              const bottom = (window.innerHeight - box.bottom) * m
+              root.style.clipPath = 'inset(' + top + 'px ' + right + 'px ' + bottom + 'px ' + left + 'px round ' + 16 * m + 'px)'
+            },
+            onComplete: () => fadeOut(0.6),
+          }),
+        )
+      }),
     )
   }
 
+  // The whole film as one timeline. It changes `director` (read by the 3D scene every frame)
+  // and the HTML overlay (countdown, captions, telemetry).
+  function startFilm() {
+    if (timelineRef.current || !data) {
+      return
+    }
+    const d = director
+    const rocketName = data.ctx.launchVehicle.name
+    const destination = data.ctx.destination.name
+    const solar = data.ctx.powerSource.powerType === 'solar'
+    const numbers: Telemetry = { time: 0, altitude: 0, speed: 0 }
+    const pushNumbers = () => setTelemetry({ ...numbers })
+    const tl = gsap.timeline()
+    timelineRef.current = tl
+
+    // Countdown. The camera drifts slowly around the rocket; the tower arms swing away.
+    for (let i = 5; i >= 1; i--) {
+      tl.call(() => setCountdown('T-' + i), [], (5 - i) * 0.34)
+    }
+    tl.to(d, { camOrbit: 0.3, camDistance: 1.55, duration: AT.liftoff, ease: 'sine.inOut' }, 0)
+    tl.to(d, { arms: 1, duration: 1.2, ease: 'power2.inOut' }, 0.5)
+
+    // Ignition: flame, smoke rolling out of the trench, the ground shakes.
+    tl.call(
+      () => {
+        setCountdown(t.ignition)
+        setCaption(t.ignitionCaption)
+      },
+      [],
+      AT.ignition,
+    )
+    tl.to(d, { engine: 1, duration: 0.5, ease: 'power2.out' }, AT.ignition)
+    tl.to(d, { groundSmoke: 1, shake: 1, duration: 0.4 }, AT.ignition)
+    tl.to(d, { vapor: 0, duration: 0.8 }, AT.ignition)
+
+    // Lift-off: slow at first. The camera stays on the ground and looks up.
+    tl.call(
+      () => {
+        setCountdown(t.liftoff)
+        setCaption(fill(texts.log.launch[1].text, { rocket: rocketName }))
+        reach('liftoff')
+      },
+      [],
+      AT.liftoff,
+    )
+    tl.to(d, { rocketY: 1.3, duration: AT.climb - AT.liftoff, ease: 'power2.in' }, AT.liftoff)
+    tl.to(d, { camDistance: 2, camHeight: 0.22, lookAt: 0.4, duration: AT.climb - AT.liftoff, ease: 'sine.inOut' }, AT.liftoff)
+    tl.to(d, { shake: 0.45, duration: 1.5 }, AT.liftoff + 0.4)
+    tl.to(numbers, { time: 40, altitude: 3, speed: 150, duration: AT.climb - AT.liftoff, ease: 'power2.in', onUpdate: pushNumbers }, AT.liftoff)
+
+    // Climb: the camera rises with the rocket and pulls back; the sky darkens.
+    const climb = AT.space - AT.climb
+    tl.to(d, { rocketY: 34, duration: climb, ease: 'power2.in' }, AT.climb)
+    tl.to(d, { follow: 0.93, duration: climb, ease: 'power1.inOut' }, AT.climb)
+    tl.to(d, { camDistance: 7, camOrbit: 0.55, duration: climb, ease: 'power1.in' }, AT.climb)
+    tl.to(d, { lookAt: 0.6, duration: 1 }, AT.climb)
+    tl.to(d, { pitch: 0.38, duration: climb, ease: 'sine.in' }, AT.climb)
+    tl.to(d, { sky: 0.6, duration: climb, ease: 'power1.in' }, AT.climb)
+    tl.to(d, { groundSmoke: 0.25, duration: 1.2 }, AT.climb)
+    tl.to(d, { shake: 0.15, duration: 1 }, AT.climb + 0.5)
+    tl.call(
+      () => {
+        setCaption(t.maxQ)
+        reach('maxQ')
+      },
+      [],
+      AT.maxQ,
+    )
+    tl.to(numbers, { time: 80, altitude: 60, speed: 1700, duration: climb, ease: 'power2.in', onUpdate: pushNumbers }, AT.climb)
+
+    // Through the clouds. The haze hides the change from the pad to space.
+    if (hazeRef.current) {
+      tl.to(hazeRef.current, { opacity: 1, duration: AT.space - AT.haze, ease: 'power1.in' }, AT.haze)
+      tl.to(hazeRef.current, { opacity: 0, duration: 0.8, ease: 'power1.out' }, AT.space)
+    }
+    tl.call(
+      () => {
+        d.act = 2
+        d.shake = 0
+      },
+      [],
+      AT.space,
+    )
+    tl.call(
+      () => {
+        setCountdown(t.space)
+        setCaption(t.spaceCaption)
+      },
+      [],
+      AT.space + 0.2,
+    )
+    tl.to(d, { spaceOrbit: -0.3, duration: AT.depart - AT.space, ease: 'sine.inOut' }, AT.space)
+    tl.to(numbers, { time: 300, altitude: 140, speed: 5200, duration: AT.upperOff - 0.6 - AT.space, ease: 'none', onUpdate: pushNumbers }, AT.space)
+
+    // Boosters fall away (only rockets that have them).
+    if (hasBoosters) {
+      tl.call(
+        () => {
+          setCountdown(t.boosterSep)
+          setCaption(t.boosterCaption)
+          reach('boosters')
+        },
+        [],
+        AT.boosters,
+      )
+      tl.to(d, { boosterSep: 1, duration: 2.6, ease: 'none' }, AT.boosters)
+    }
+    tl.to(d, { spaceDistance: 0.95, duration: 1.4, ease: 'sine.inOut' }, AT.boosters)
+
+    // Main engine off, first stage drops, the upper stage takes over.
+    tl.to(d, { engine: 0, duration: 0.25 }, AT.meco)
+    tl.call(
+      () => {
+        setCountdown(t.stageSep)
+        setCaption(t.separation)
+        reach('stage')
+      },
+      [],
+      AT.stage,
+    )
+    tl.to(d, { stageSep: 1, duration: 2.6, ease: 'none' }, AT.stage)
+    tl.to(d, { spaceDistance: 0.6, duration: 1.6, ease: 'sine.inOut' }, AT.stage)
+    tl.to(d, { upperEngine: 1, duration: 0.4, ease: 'power2.out' }, AT.upper)
+
+    // The nose cone opens and shows the spacecraft.
+    tl.call(
+      () => {
+        setCountdown(t.fairingSep)
+        setCaption(t.fairingCaption)
+        reach('fairing')
+      },
+      [],
+      AT.fairing,
+    )
+    tl.to(d, { fairingSep: 1, duration: 2.3, ease: 'none' }, AT.fairing)
+    tl.to(d, { spaceDistance: 0.34, duration: 1.6, ease: 'sine.inOut' }, AT.fairing + 0.3)
+
+    // In orbit.
+    tl.to(d, { upperEngine: 0, duration: 0.3 }, AT.upperOff)
+    tl.to(numbers, { time: 520, altitude: 200, speed: 7800, duration: 0.6, ease: 'power1.out', onUpdate: pushNumbers }, AT.upperOff - 0.6)
+    tl.call(
+      () => {
+        setCountdown(t.orbit)
+        setCaption(fill(t.inOrbit, { destination }))
+      },
+      [],
+      AT.upperOff,
+    )
+
+    // The spacecraft is let go and unfolds.
+    tl.call(
+      () => {
+        setCountdown(t.craftSep)
+        setCaption(t.craftCaption)
+        reach('craft')
+      },
+      [],
+      AT.craft,
+    )
+    tl.to(d, { craftSep: 1, duration: 1.8, ease: 'power1.out' }, AT.craft)
+    tl.to(d, { spaceDistance: 0.24, duration: 1.6, ease: 'sine.inOut' }, AT.craft)
+    tl.to(d, { deploy: 1, duration: 1.4, ease: 'power2.inOut' }, AT.deploy)
+    tl.call(() => setCaption(solar ? t.deploySolar : t.deployRtg), [], AT.deploy + 0.3)
+
+    // Departure: one last push, and the camera pulls back until we see the whole Earth.
+    tl.call(
+      () => {
+        setCountdown(fill(t.depart, { destination: destination.toUpperCase() }))
+        setCaption(fill(t.departCaption, { destination }))
+        reach('depart')
+      },
+      [],
+      AT.depart,
+    )
+    tl.to(d, { craftEngine: 1, duration: 0.3 }, AT.depart)
+    tl.to(d, { depart: 1, duration: AT.morph - AT.depart + 0.5, ease: 'none' }, AT.depart)
+    tl.to(numbers, { time: 900, altitude: 9000, speed: 11200, duration: 2, ease: 'power1.in', onUpdate: pushNumbers }, AT.depart)
+    tl.to(d, { craftEngine: 0, duration: 0.6 }, AT.morph)
+    if (hudRef.current) {
+      tl.to(hudRef.current, { opacity: 0, duration: 0.6 }, AT.morph - 0.5)
+    }
+    tl.call(shrinkIntoMission, [], AT.morph)
+  }
+
+  useEffect(() => {
+    if (ready) {
+      startFilm()
+    }
+    // The film starts once, when the 3D scene is ready.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready])
+
+  useEffect(() => {
+    return () => {
+      timelineRef.current?.kill()
+      for (const tween of tweensRef.current) {
+        tween.kill()
+      }
+    }
+  }, [])
+
+  if (!data) {
+    return null
+  }
+
+  const minutes = Math.floor(telemetry.time / 60)
+  const seconds = Math.floor(telemetry.time % 60)
+
   return (
     <section className="launch-screen" ref={rootRef}>
-      <div className="launch-sky" />
-      <div className="launch-world">
-        <div className="launch-ground" />
-        <div className="launch-tower" />
-        <div className="launch-smoke">{smoke}</div>
+      <div className={'launch-canvas' + (ready ? ' is-ready' : '')}>
+        <SceneBoundary onError={skip}>
+          <Suspense fallback={null}>
+            <LaunchScene
+              director={director}
+              launchVehicleId={data.ctx.launchVehicle.id}
+              design={design}
+              orbitId={data.ctx.orbit.id}
+              onReady={() => setReady(true)}
+            />
+          </Suspense>
+        </SceneBoundary>
       </div>
+      <div className="launch-haze" ref={hazeRef} aria-hidden="true" />
+      {!ready && <p className="launch-loading mono">{t.loading}</p>}
 
-      <div className="launch-earth" />
-      <div className={'launch-rocket size-' + size}>
-        <div className="rocket-upper">
-          <UpperStage />
-          <div className="flame flame-upper" />
-        </div>
-        <div className="rocket-lower">
-          <LowerStage size={size} />
-          <div className="flame" />
-        </div>
-      </div>
-
-      <div className="launch-hud">
+      <div className="launch-hud" ref={hudRef}>
         <div className="launch-countdown mono">{countdown}</div>
+        <ol className="launch-track" aria-label={t.track}>
+          {milestones.map((key, i) => (
+            <li key={key} className={i < reached ? 'is-done' : undefined}>
+              <span className="launch-track-dot" />
+              {milestoneLabels[key]}
+            </li>
+          ))}
+        </ol>
         <div className="launch-telemetry">
           <Readout
             rows={[
               { label: t.met, value: 'T+' + String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0') },
-              { label: t.altitude, value: Math.round(telemetry.altitude) + ' ' + texts.units.km.toUpperCase() },
-              { label: t.speed, value: num(telemetry.speed * 3.6) + ' ' + texts.units.kmh.toUpperCase() },
+              { label: t.altitude, value: num(Math.round(telemetry.altitude)) + ' ' + texts.units.km.toUpperCase() },
+              { label: t.speed, value: num(Math.round((telemetry.speed * 3.6) / 10) * 10) + ' ' + texts.units.kmh.toUpperCase() },
             ]}
           />
         </div>
-        <p className="launch-caption mono" key={caption}>
+        <p className="launch-caption" key={caption}>
           {caption}
         </p>
       </div>
 
-      <button type="button" className="btn btn-quiet btn-sm launch-skip" onClick={() => finish(true)}>
-        {texts.ui.skip}
-      </button>
+      {!leaving && (
+        <button type="button" className="btn btn-quiet btn-sm launch-skip" onClick={skip}>
+          {texts.ui.skip}
+        </button>
+      )}
     </section>
   )
 }

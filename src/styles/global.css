@@ -802,11 +802,12 @@ p {
   display: inline-flex;
 }
 
+/* Drawn in a portal on top of the page; Tooltip.tsx sets left/top. */
 .tip-bubble {
-  position: absolute;
-  bottom: calc(100% + 10px);
-  left: 50%;
-  z-index: 40;
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 100;
   width: max-content;
   max-width: 280px;
   padding: 10px 12px;
@@ -814,6 +815,7 @@ p {
   background: #16232e;
   border: 1px solid var(--line-strong);
   box-shadow: var(--shadow);
+  font-family: var(--font-ui);
   font-size: 13px;
   line-height: 1.45;
   color: var(--text);
@@ -823,32 +825,14 @@ p {
   font-weight: 400;
   pointer-events: none;
   opacity: 0;
-  transform: translate(-50%, 4px);
+  transform: translateY(4px);
   transition:
     opacity var(--dur-fast) var(--ease),
     transform var(--dur-fast) var(--ease);
 }
 
-.tip-bottom .tip-bubble {
-  bottom: auto;
-  top: calc(100% + 10px);
-}
-
-.tip:hover .tip-bubble,
-.tip:focus-within .tip-bubble {
+.tip-bubble.is-open {
   opacity: 1;
-  transform: translate(-50%, 0);
-}
-
-/* The "?" sits at the right edge of each resource cell: open its bubble to the left. */
-.resource .tip-bubble {
-  left: auto;
-  right: -6px;
-  transform: translate(0, 4px);
-}
-
-.resource .tip:hover .tip-bubble,
-.resource .tip:focus-within .tip-bubble {
   transform: none;
 }
 

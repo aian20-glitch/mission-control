@@ -158,7 +158,7 @@ function Trajectory({ progress, glideMs, phase, destinationName, delay, color }:
     <svg className="trajectory" viewBox="0 0 620 200" role="img" aria-label={fill(texts.ui.mission.path, { name: destinationName })}>
       <path d={path} fill="none" stroke="rgba(255,255,255,0.14)" strokeDasharray="3 6" />
       <path d={path} fill="none" stroke="#5dcaa5" strokeWidth="1.6" pathLength={1} strokeDasharray="1" strokeDashoffset={1 - shown} />
-      <circle cx="60" cy="150" r="12" fill="#4f9be8" />
+      <circle cx="60" cy="150" r="12" fill="#4f9be8" className="trajectory-earth" />
       <text x="60" y="185" textAnchor="middle" className="map-label">
         {texts.ui.window.earth}
       </text>

@@ -4,7 +4,7 @@ Educational game for the challenge "Space Mission Design Game".
 Style: the player sits at a space-station computer. Modern sci-fi HUD + Apple-like minimalism + a small dose of Apollo-era retro (mono log, callsigns). Real NASA 3D models; cinematic 3D rocket launch with camera follow and zoom.
 Full design: `docs/GDD.md` (idea). Agreed decisions that override the GDD: `docs/DECISIONS.md` (read it first). Challenge text: `docs/CHALLENGE.md`.
 Deadline: 2026-11-15 inclusive. The team brainstorms and gives tasks; Claude writes everything (code, data, texts, assets). Audience: students with zero space background — explain every term in plain words.
-Status: v0.1 draft — full playable loop with 2D stand-ins (SVG planets, spacecraft schematic, 2D launch). Next: real 3D scenes.
+Status: v0.1 draft — full playable loop. Launch is a real 3D film (`src/three/LaunchScene.tsx` + `src/three/launch/`, procedural models, lazy-loaded). Other screens still use 2D stand-ins (SVG planets, schematic). Next: 3D planet / spacecraft / orbit scenes.
 
 ## Stack
 - Vite + React + TypeScript. 2D UI (panels, cards, bars, logs) = HTML/CSS.
@@ -22,7 +22,7 @@ src/
   store/useMission.ts    (Zustand: choices + results; useMissionReport() derives resources)
   logic/                 types.ts, data.ts, resources.ts, events.ts, scoring.ts  (pure functions, no UI)
   screens/               Title, Objective, Orbit, Assembly, LaunchWindow, Launch, Mission, Debrief
-  three/                 (next) SceneCanvas, PlanetScene, SpacecraftScene, LaunchScene, OrbitScene
+  three/                 LaunchScene + launch/ (director, rockets, spacecraft, sets, particles); next: PlanetScene, SpacecraftScene, OrbitScene
   components/            ResourceBar, PartCard, MissionLog, HudButton, Tooltip, PlanetOrb, SpacecraftSchematic, OrbitMap, ...
   styles/                tokens.css, global.css, screens.css
   data/                  planets.json, parts.json, events.json, texts.json (English: all numbers + texts)

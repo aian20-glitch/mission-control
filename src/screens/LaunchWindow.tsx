@@ -7,6 +7,7 @@ import { StatusLights } from '../components/StatusLights'
 import { num, texts } from '../logic/data'
 import { WINDOW_MONTHS, formatTrip, isGoodWindow, monthLabel, transferMonths, windowFactor } from '../logic/resources'
 import { useMission, useMissionReport } from '../store/useMission'
+import { loadLaunchScene } from '../three/preload'
 
 const YEARS = [2027, 2028, 2029]
 
@@ -17,6 +18,11 @@ export function LaunchWindow() {
   const goTo = useMission((s) => s.goTo)
 
   const destination = data ? data.ctx.destination : null
+
+  // Download the 3D launch film in the background while the player picks a date.
+  useEffect(() => {
+    void loadLaunchScene()
+  }, [])
 
   // Start the slider away from the best window, so the player has to find it.
   useEffect(() => {
