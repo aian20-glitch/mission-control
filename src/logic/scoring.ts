@@ -117,7 +117,7 @@ export function evaluateMission(ctx: MissionContext, report: ResourceReport, res
   const hurt: Note[] = []
 
   if (lost) {
-    hurt.push({ title: 'Mission lost', text: lostReason })
+    hurt.push({ title: n.missionLost, text: lostReason })
   }
   for (const item of resolved) {
     if (item.outcome.quality === 'bad' && !item.outcome.effects.lost) {

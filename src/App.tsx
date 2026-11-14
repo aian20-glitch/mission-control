@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { StepBar } from './components/StepBar'
 import { Starfield } from './components/Starfield'
-import { texts } from './logic/data'
+import { LANGUAGES, texts } from './logic/data'
 import { Assembly } from './screens/Assembly'
 import { Debrief } from './screens/Debrief'
 import { Launch } from './screens/Launch'
@@ -48,12 +48,37 @@ function useElapsed(): string {
   return h + ':' + m + ':' + s
 }
 
+// EN / RU switch. Locked once the spacecraft has launched: the log and report are already written.
+function LanguageSwitch({ locked }: { locked: boolean }) {
+  const lang = useMission((s) => s.lang)
+  const setLang = useMission((s) => s.setLang)
+  return (
+    <div className="lang-switch" role="group" aria-label={texts.ui.language} title={locked ? texts.ui.languageLocked : undefined}>
+      {LANGUAGES.map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          className={'lang-option' + (item.id === lang ? ' is-active' : '')}
+          aria-pressed={item.id === lang}
+          disabled={locked}
+          onClick={() => setLang(item.id)}
+        >
+          {item.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export function App() {
   const screen = useMission((s) => s.screen)
   const sandbox = useMission((s) => s.sandbox)
   const goTo = useMission((s) => s.goTo)
+  // Read here so the whole shell re-renders when the language changes.
+  const lang = useMission((s) => s.lang)
   const elapsed = useElapsed()
   const cinematic = screen === 'launch'
+  const languageLocked = screen === 'mission' || screen === 'debrief'
 
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -66,7 +91,7 @@ export function App() {
 
       {!cinematic && (
         <header className="header">
-          <button type="button" className="brand" onClick={() => goTo('title')} aria-label="Back to title">
+          <button type="button" className="brand" onClick={() => goTo('title')} aria-label={texts.ui.backToTitle}>
             <svg className="brand-mark" viewBox="0 0 64 64" aria-hidden="true">
               <circle cx="32" cy="32" r="17" fill="none" stroke="#5DCAA5" strokeWidth="3" />
               <ellipse cx="32" cy="32" rx="26" ry="9" fill="none" stroke="#5DCAA5" strokeWidth="2" opacity=".6" transform="rotate(-25 32 32)" />
@@ -77,13 +102,14 @@ export function App() {
           </button>
           {screen !== 'title' ? <StepBar current={screen} /> : <span />}
           <div className="header-right">
-            {sandbox && screen !== 'title' && <span className="chip chip-warn">SANDBOX</span>}
-            <span className="chip">APPROX. VALUES</span>
+            {sandbox && screen !== 'title' && <span className="chip chip-warn">{texts.ui.sandbox}</span>}
+            <span className="chip chip-approx">{texts.ui.approx}</span>
+            <LanguageSwitch locked={languageLocked} />
           </div>
         </header>
       )}
 
-      <main className="main" key={screen}>
+      <main className="main" key={screen + '-' + lang}>
         {renderScreen(screen)}
       </main>
 
@@ -96,7 +122,9 @@ export function App() {
               </span>
             ))}
           </span>
-          <span>MET {elapsed}</span>
+          <span>
+            {texts.ui.met} {elapsed}
+          </span>
         </footer>
       )}
     </div>

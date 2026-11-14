@@ -3,8 +3,8 @@ import { HudButton } from '../components/HudButton'
 import { Onboarding } from '../components/Onboarding'
 import { PlanetOrb } from '../components/PlanetOrb'
 import { Readout } from '../components/Readout'
-import { ScreenHeader } from '../components/ScreenHeader'
-import { getDestination, planetsData, texts } from '../logic/data'
+import { ScreenHeader, stepLabel } from '../components/ScreenHeader'
+import { fill, getDestination, money, planetsData, texts } from '../logic/data'
 import type { DestinationId } from '../logic/types'
 import { useMission } from '../store/useMission'
 
@@ -18,14 +18,15 @@ export function Objective() {
   const [hovered, setHovered] = useState<DestinationId | null>(null)
 
   const shown = getDestination(hovered ?? destinationId ?? 'mars')
+  const t = texts.ui.objective
 
   return (
     <section className="screen">
       <ScreenHeader
-        step="Step 1 of 6 · Target"
-        title="Choose a target"
+        step={stepLabel(1, 'objective')}
+        title={t.heading}
         capcom={texts.capcom.objective}
-        right={sandbox ? <span className="chip chip-warn">SANDBOX · NO BUDGET LIMIT</span> : undefined}
+        right={sandbox ? <span className="chip chip-warn">{t.sandboxChip}</span> : undefined}
       />
 
       <div className="objective-layout">
@@ -40,21 +41,21 @@ export function Objective() {
             <p className="dim">{shown.objective.explain}</p>
             <Readout
               rows={[
-                { label: 'Budget', value: '$' + shown.budget + 'M' },
-                { label: 'Distance', value: shown.distance },
-                { label: 'Signal delay', value: shown.signalDelay },
-                { label: 'Sunlight', value: Math.round(shown.sunlight * 1000) / 10 + '% of Earth' },
-                { label: 'Trip', value: shown.transfer.label },
+                { label: t.budget, value: money(shown.budget) },
+                { label: t.distance, value: shown.distance },
+                { label: t.signalDelay, value: shown.signalDelay },
+                { label: t.sunlight, value: fill(t.sunlightValue, { n: (Math.round(shown.sunlight * 1000) / 10).toLocaleString(texts.units.locale) }) },
+                { label: t.trip, value: shown.transfer.label },
               ]}
             />
             <p className="fact">
-              <span className="eyebrow">Did you know</span>
+              <span className="eyebrow">{t.fact}</span>
               {shown.fact}
             </p>
           </div>
         </div>
 
-        <div className="target-list" role="radiogroup" aria-label="Targets">
+        <div className="target-list" role="radiogroup" aria-label={t.targets}>
           {planetsData.destinations.map((d) => {
             const selected = d.id === destinationId
             return (
@@ -73,12 +74,12 @@ export function Objective() {
                   <span className="target-row">
                     <span className="target-name">{d.name}</span>
                     <span className={'chip' + (d.difficulty === 'Hard' ? ' chip-danger' : d.difficulty === 'Tutorial' ? ' chip-accent' : '')}>
-                      {d.difficulty}
+                      {texts.ui.difficulty[d.difficulty]}
                     </span>
                   </span>
                   <span className="target-goal">{d.objective.title}</span>
                   <span className="target-meta mono">
-                    ${d.budget}M · {d.transfer.label}
+                    {money(d.budget)} · {d.transfer.label}
                   </span>
                 </span>
               </button>
@@ -89,10 +90,10 @@ export function Objective() {
 
       <div className="screen-actions">
         <HudButton variant="quiet" onClick={() => goTo('title')}>
-          Back
+          {texts.ui.back}
         </HudButton>
         <HudButton disabled={!destinationId} onClick={() => goTo('orbit')}>
-          Continue
+          {texts.ui.continue}
         </HudButton>
       </div>
 

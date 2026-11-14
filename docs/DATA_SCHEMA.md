@@ -7,7 +7,15 @@ All game numbers and texts live in `src/data/*.json`. TypeScript types for every
 | `parts.json` | spacecraft bus, 5 slots, 16 parts, default design | `PartsFile` |
 | `planets.json` | Earth look + 3 destinations (objective, budget, sunlight, link, window, orbits, real mission, alternative designs) | `PlanetsFile` |
 | `events.json` | mission events: condition (`when`), choices, outcomes with effects and a plain-language `why` | `EventsFile` |
-| `texts.json` | game title, CAPCOM lines, onboarding, resource explanations, issue and log templates (`{placeholders}`) | — |
+| `texts.json` | game title, CAPCOM lines, onboarding, resource explanations, issue and log templates (`{placeholders}`), `units` (number format, unit names, month names) and `ui` (every button, label and heading on screen) | — |
+| `ru/*.json` | Russian translation: same structure as the English file, texts only | — |
+
+## Languages
+- English files hold all numbers and texts. `src/data/ru/` holds only the Russian texts, with the same structure.
+- `setDataLanguage()` in `src/logic/data.ts` lays the translation over the English data. List items are matched by `id`, or by position when there is no `id` (choices, outcomes, log lines). Numbers and ids are never taken from a translation.
+- After adding or changing any English text, add the Russian one and run `npm run i18n`: it lists missing, untranslated and extra keys.
+- Callsigns (CAPCOM, FLIGHT…) and real mission names stay in English on purpose.
+- Russian templates avoid declining names: write «к цели «{destination}»» or «{name}: …», not «к {destination}».
 
 ## Units
 - cost: millions of USD · mass: kg · power: W · data/downlink: GB per day · time: months.

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { HudButton } from '../components/HudButton'
 import { MissionLog, type LogLine, type LogTone } from '../components/MissionLog'
-import { ScreenHeader } from '../components/ScreenHeader'
+import { ScreenHeader, stepLabel } from '../components/ScreenHeader'
 import { texts, fill } from '../logic/data'
 import { buildMissionPlan, resolveAuto, resolveChoice } from '../logic/events'
 import { formatLifetime, transferMonths, bestWindowMonth } from '../logic/resources'
@@ -43,13 +43,14 @@ function timeLabel(plan: PlanStep[], index: number, transferDays: number): strin
   if (step.phase === 'launch') {
     return LAUNCH_TIMES[Math.min(indexInPhase, LAUNCH_TIMES.length - 1)]
   }
+  const day = texts.ui.mission.day
   if (step.phase === 'cruise') {
-    return 'DAY ' + Math.max(1, Math.round((transferDays * (indexInPhase + 1)) / (phaseLength + 1)))
+    return fill(day, { n: Math.max(1, Math.round((transferDays * (indexInPhase + 1)) / (phaseLength + 1))) })
   }
   if (step.phase === 'arrival') {
-    return 'DAY ' + Math.round(transferDays)
+    return fill(day, { n: Math.round(transferDays) })
   }
-  return 'DAY ' + Math.round(transferDays + 20 * (indexInPhase + 1))
+  return fill(day, { n: Math.round(transferDays + 20 * (indexInPhase + 1)) })
 }
 
 interface WhyNote {
@@ -85,14 +86,15 @@ function DecisionModal({
   }, [left, timed, defaultChoice])
 
   const ringLength = 2 * Math.PI * 18
+  const t = texts.ui.mission
 
   return (
     <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="event-title">
       <div className="modal event-modal">
         <div className="event-head">
-          <span className="capcom-sign">{event.callsign} · DECISION NEEDED</span>
+          <span className="capcom-sign">{fill(t.decision, { callsign: event.callsign })}</span>
           {timed && (
-            <svg className="timer-ring" viewBox="0 0 44 44" aria-label={left + ' seconds left'}>
+            <svg className="timer-ring" viewBox="0 0 44 44" aria-label={fill(t.secondsLeft, { n: left })}>
               <circle cx="22" cy="22" r="18" className="timer-track" />
               <circle
                 cx="22"
@@ -121,7 +123,7 @@ function DecisionModal({
           ))}
         </div>
         <p className="event-foot">
-          {timed ? 'No decision in time = ' + choices[defaultChoice].label + '. Not deciding is also a decision.' : 'Take your time, Director.'}
+          {timed ? fill(t.timedFoot, { choice: choices[defaultChoice].label }) : t.untimedFoot}
         </p>
       </div>
     </div>
@@ -141,12 +143,12 @@ function Trajectory({ progress, phase, destinationName, delay, color }: { progre
   const showSignal = phase === 'operations'
   const craft = bezierPoint(progress)
   return (
-    <svg className="trajectory" viewBox="0 0 620 200" role="img" aria-label={'Spacecraft path to ' + destinationName}>
+    <svg className="trajectory" viewBox="0 0 620 200" role="img" aria-label={fill(texts.ui.mission.path, { name: destinationName })}>
       <path d={path} fill="none" stroke="rgba(255,255,255,0.14)" strokeDasharray="3 6" />
       <path d={path} fill="none" stroke="#5dcaa5" strokeWidth="1.6" pathLength={1} strokeDasharray="1" strokeDashoffset={1 - progress} className="trajectory-done" />
       <circle cx="60" cy="150" r="12" fill="#4f9be8" />
       <text x="60" y="185" textAnchor="middle" className="map-label">
-        Earth
+        {texts.ui.window.earth}
       </text>
       <circle cx="560" cy="110" r="14" fill={color} />
       <text x="560" y="150" textAnchor="middle" className="map-label">
@@ -161,7 +163,7 @@ function Trajectory({ progress, phase, destinationName, delay, color }: { progre
         ))}
       {showSignal && (
         <text x="310" y="196" textAnchor="middle" className="map-label">
-          signal delay: {delay}
+          {fill(texts.ui.mission.signal, { delay })}
         </text>
       )}
     </svg>
@@ -208,7 +210,7 @@ export function Mission() {
     }
     if (index >= plan.length) {
       const end = texts.log.end
-      addLine(end.callsign, fill(end.text, { months: formatLifetime(data.report.lifetimeMonths) }), 'good', 'END')
+      addLine(end.callsign, fill(end.text, { months: formatLifetime(data.report.lifetimeMonths) }), 'good', texts.ui.mission.end)
       setDone(true)
       return
     }
@@ -261,7 +263,7 @@ export function Mission() {
     recordEvent(result)
     const time = timeLabel(plan, index, transferDays)
     const choice = (pending.choices ?? [])[choiceIndex]
-    addLine('FLIGHT', (timedOut ? 'No decision. Default: ' : 'Director: ') + choice.label, 'normal', time)
+    addLine('FLIGHT', fill(timedOut ? texts.ui.mission.defaultChoice : texts.ui.mission.directorChoice, { choice: choice.label }), 'normal', time)
     addLine(pending.callsign, result.outcome.log, toneFor(result.outcome.quality, false), time)
     setWhy({ title: pending.title, outcome: result.outcome })
     setPending(null)
@@ -283,16 +285,17 @@ export function Mission() {
 
   const live = evaluateMission(ctx, report, resolved)
   const timed = ctx.destination.difficulty !== 'Tutorial' && !sandbox
+  const t = texts.ui.mission
 
   return (
     <section className="screen">
       <ScreenHeader
-        step="Step 6 of 6 · Mission"
-        title={ctx.destination.name + ' mission in progress'}
+        step={stepLabel(6, 'mission')}
+        title={fill(t.heading, { name: ctx.destination.name })}
         capcom={texts.capcom.mission}
         right={
           <button type="button" className="btn btn-quiet btn-sm" onClick={() => setFast(!fast)} aria-pressed={fast}>
-            {fast ? 'Speed ×4' : 'Speed ×1'}
+            {fill(t.speed, { n: fast ? 4 : 1 })}
           </button>
         }
       />
@@ -314,24 +317,24 @@ export function Mission() {
 
           <div className="live-stats">
             <div className="live-stat panel">
-              <span className="eyebrow">Power</span>
+              <span className="eyebrow">{t.power}</span>
               <span className="live-value mono">
-                {report.powerNeeded}/{report.powerAvailable} W
+                {report.powerNeeded}/{report.powerAvailable} {texts.units.watt}
               </span>
             </div>
             <div className="live-stat panel">
-              <span className="eyebrow">Data home</span>
+              <span className="eyebrow">{t.dataHome}</span>
               <span className="live-value mono">{Math.round(live.deliveredShare * 100)}%</span>
             </div>
             <div className="live-stat panel">
-              <span className="eyebrow">Science forecast</span>
+              <span className="eyebrow">{t.forecast}</span>
               <span className="live-value mono">{live.science}/100</span>
             </div>
           </div>
 
           {why && (
             <div className={'why-card panel tone-' + why.outcome.quality} key={why.title}>
-              <span className="eyebrow">Why it matters · {why.title}</span>
+              <span className="eyebrow">{fill(t.why, { title: why.title })}</span>
               <p>{why.outcome.why}</p>
             </div>
           )}
@@ -342,10 +345,10 @@ export function Mission() {
 
       <div className="screen-actions">
         <span className="faint mono small">
-          {ctx.launchVehicle.name.toUpperCase()} · {ctx.orbit.name.toUpperCase()} · {ctx.instruments.length} INSTRUMENTS
+          {fill(t.summary, { rocket: ctx.launchVehicle.name, orbit: ctx.orbit.name, n: ctx.instruments.length }).toUpperCase()}
         </span>
         {(done || lost) && (
-          <HudButton onClick={() => finishMission(ctx, report)}>{lost ? 'Investigate: mission report' : 'Mission report'}</HudButton>
+          <HudButton onClick={() => finishMission(ctx, report)}>{lost ? t.investigate : t.report}</HudButton>
         )}
       </div>
 

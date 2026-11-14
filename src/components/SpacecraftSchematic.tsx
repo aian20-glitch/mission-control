@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { getPart } from '../logic/data'
+import { getPart, money, num, texts } from '../logic/data'
 import type { Design, OrbitId } from '../logic/types'
 
 interface SchematicProps {
@@ -188,7 +188,7 @@ export function SpacecraftSchematic({ design, orbitId, hotPartId, deadPartIds, o
 
   return (
     <div className="schematic">
-      <svg viewBox="0 0 400 400" role="img" aria-label="Spacecraft schematic">
+      <svg viewBox="0 0 400 400" role="img" aria-label={texts.ui.assembly.schematic}>
         <Reticle />
         {isLander && (
           <g className="sc-part" key={'legs'}>
@@ -224,11 +224,11 @@ export function SpacecraftSchematic({ design, orbitId, hotPartId, deadPartIds, o
           <>
             <span className="schematic-caption-name">▸ {hotPart.name.toUpperCase()}</span>
             <span>
-              {hotPart.mass} KG · {hotPart.power} W · ${hotPart.cost}M
+              {num(hotPart.mass)} {texts.units.kg} · {hotPart.power} {texts.units.watt} · {money(hotPart.cost)}
             </span>
           </>
         ) : (
-          <span className="faint">HOVER A PART TO INSPECT</span>
+          <span className="faint">{texts.ui.assembly.hover}</span>
         )}
       </div>
     </div>

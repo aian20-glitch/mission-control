@@ -6,6 +6,7 @@ import { useMission } from '../store/useMission'
 
 export function Title() {
   const startGame = useMission((s) => s.startGame)
+  const t = texts.ui.title
 
   return (
     <section className="screen title-screen">
@@ -14,24 +15,26 @@ export function Title() {
         <PlanetOrb look={planetsData.earth.look} size={420} seed={11} spinSeconds={180} />
       </div>
       <div className="title-copy">
-        <span className="eyebrow">{texts.game.station} · systems online</span>
+        <span className="eyebrow">
+          {texts.game.station} · {t.online}
+        </span>
         <h1 className="title-name">{texts.game.title}</h1>
         <p className="title-lead">{texts.game.tagline}</p>
         <div className="title-actions">
-          <HudButton onClick={() => startGame(false)}>Start mission</HudButton>
+          <HudButton onClick={() => startGame(false)}>{t.start}</HudButton>
           <HudButton variant="ghost" onClick={() => startGame(true)}>
-            Sandbox
+            {t.sandbox}
           </HudButton>
-          <HudButton variant="quiet" disabled title="Coming soon">
-            Team mode · soon
+          <HudButton variant="quiet" disabled title={t.soon}>
+            {t.team}
           </HudButton>
         </div>
         <Readout
           rows={[
-            { label: 'Targets', value: planetsData.destinations.map((d) => d.name).join(' · ') },
-            { label: 'Parts', value: String(partsData.parts.length) },
-            { label: 'Resources', value: '6' },
-            { label: 'One mission', value: '~5 MIN' },
+            { label: t.targets, value: planetsData.destinations.map((d) => d.name).join(' · ') },
+            { label: t.parts, value: String(partsData.parts.length) },
+            { label: t.resources, value: '6' },
+            { label: t.oneMission, value: t.duration },
           ]}
         />
       </div>

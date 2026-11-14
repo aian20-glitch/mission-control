@@ -243,6 +243,14 @@
   background: rgba(0, 0, 0, 0.25);
 }
 
+.orbit-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+
 .orbit-name {
   font-size: 22px;
   font-weight: 500;
@@ -749,18 +757,6 @@
   color: var(--text-dim);
 }
 
-.launch-console {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  padding: 16px 18px;
-}
-
-.launch-console .eyebrow {
-  display: block;
-  margin-bottom: 10px;
-}
 
 /* ---------- Launch cinematic ---------- */
 
@@ -1195,11 +1191,14 @@
 /* ---------- Debrief ---------- */
 
 .debrief-hero {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
+  /* Above the columns below, so the score tooltips are not covered. */
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 28px;
-  padding: 24px 28px;
+  gap: 16px 28px;
+  padding: 20px 28px;
 }
 
 .debrief-hero.is-lost {
@@ -1238,6 +1237,8 @@
 }
 
 .debrief-verdict {
+  flex: 1 1 280px;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -1262,37 +1263,48 @@
 }
 
 .score-tiles {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+  display: flex;
+  gap: 10px;
 }
 
 .score-tile {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 18px 20px;
+  gap: 8px;
+  width: 136px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.02);
+  cursor: help;
 }
 
 .score-tile-head {
   display: flex;
   justify-content: space-between;
+  gap: 8px;
 }
 
 .score-tile-value {
-  font-size: 34px;
+  font-size: 26px;
+  line-height: 1;
   letter-spacing: -0.02em;
-}
-
-.score-tile-explain {
-  font-size: 13px;
-  color: var(--text-dim);
 }
 
 .debrief-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
+}
+
+.debrief-column {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.notes-card + .notes-card {
+  margin-top: 16px;
 }
 
 .notes-card ul,
@@ -1371,8 +1383,15 @@
   font-size: 12px;
 }
 
+.design-summary {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
 .design-summary p {
   margin-top: 6px;
+  font-size: 13px;
   color: var(--text-dim);
 }
 
@@ -1448,7 +1467,8 @@
   .mission-layout {
     grid-template-columns: 1fr;
   }
-  .orbit-grid {
+  .orbit-grid,
+  .debrief-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -1465,8 +1485,6 @@
   .objective-stage .orb {
     width: 200px !important;
   }
-  .debrief-hero,
-  .score-tiles,
   .debrief-grid,
   .live-stats,
   .event-choices,
@@ -1475,5 +1493,315 @@
   }
   .screen-actions {
     flex-wrap: wrap;
+  }
+  .score-tiles {
+    width: 100%;
+  }
+  .score-tiles .tip,
+  .score-tile {
+    flex: 1;
+    width: auto;
+  }
+}
+
+/* ---------- Fit to screen (desktop) ----------
+   On a normal desktop window each screen fits the window height, so the page never scrolls.
+   Long lists scroll inside their own panel. Narrow or very short windows keep normal page scroll. */
+
+@media (min-width: 1101px) and (min-height: 600px) {
+  .app {
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .header,
+  .footer {
+    flex-shrink: 0;
+  }
+
+  .header {
+    position: relative;
+  }
+
+  .footer {
+    padding: 8px var(--gutter);
+  }
+
+  .screen {
+    min-height: 0;
+    gap: clamp(10px, 1.8vh, 18px);
+    padding: clamp(14px, 2.4vh, 26px) var(--gutter) 0;
+  }
+
+  .screen-title h2 {
+    font-size: clamp(22px, 3.4vh, 34px);
+  }
+
+  .screen-actions {
+    position: static;
+    flex-shrink: 0;
+    margin: auto calc(-1 * var(--gutter)) 0;
+    padding: clamp(8px, 1.4vh, 14px) var(--gutter) clamp(12px, 2vh, 18px);
+    background: none;
+  }
+
+  .readout-row {
+    padding: clamp(5px, 0.9vh, 9px) 14px;
+  }
+
+  /* Title */
+  .title-screen {
+    min-height: 0;
+    padding-bottom: clamp(14px, 2.4vh, 26px);
+  }
+
+  .porthole {
+    max-width: min(560px, calc(100dvh - 190px));
+  }
+
+  /* Target */
+  .objective-layout {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .objective-stage {
+    min-height: 0;
+    overflow: hidden;
+    gap: clamp(16px, 2.4vw, 32px);
+    padding: clamp(16px, 3vh, 32px);
+  }
+
+  .objective-stage .orb {
+    width: min(300px, 30vh) !important;
+  }
+
+  .stage-info {
+    max-height: 100%;
+    overflow-y: auto;
+    gap: clamp(6px, 1.2vh, 12px);
+  }
+
+  .stage-info > * {
+    flex-shrink: 0;
+  }
+
+  .stage-name {
+    font-size: clamp(28px, 4.4vh, 40px);
+  }
+
+  .target-list {
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .target-card {
+    padding: clamp(10px, 1.8vh, 16px) 18px;
+  }
+
+  /* Orbit: the sketch takes whatever height the texts leave.
+     The cards share one row grid (subgrid), so names, meters and notes line up across cards. */
+  .orbit-grid {
+    flex: 1;
+    min-height: 0;
+    grid-template-rows: minmax(56px, 1fr) repeat(4, auto);
+    row-gap: 0;
+  }
+
+  .orbit-card {
+    display: grid;
+    grid-row: span 5;
+    grid-template-rows: subgrid;
+    row-gap: clamp(6px, 1.2vh, 12px);
+    min-height: 0;
+    overflow: hidden;
+    padding: clamp(12px, 2vh, 20px);
+  }
+
+  .orbit-card .orbit-diagram {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .orbit-name {
+    font-size: clamp(18px, 2.6vh, 22px);
+  }
+
+  .orbit-summary {
+    min-height: 0;
+  }
+
+  .orbit-stats {
+    gap: clamp(4px, 0.8vh, 8px);
+  }
+
+  .orbit-explain {
+    padding-top: clamp(6px, 1.2vh, 12px);
+  }
+
+  /* Build */
+  .resource {
+    gap: clamp(4px, 0.8vh, 8px);
+    padding: clamp(8px, 1.4vh, 14px) 16px clamp(10px, 1.6vh, 16px);
+  }
+
+  .assembly-layout {
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* Schematic and flight notes side by side, so the spacecraft keeps the full height. */
+  .assembly-stage {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 0.8fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 12px 18px;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .assembly-stage .stage-chips {
+    grid-column: 1 / -1;
+  }
+
+  .assembly-stage .schematic {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    max-width: none;
+  }
+
+  .assembly-stage .schematic svg {
+    flex: 1 1 0;
+    min-height: 0;
+    height: 100%;
+  }
+
+  .flight-notes {
+    min-height: 0;
+    overflow-y: auto;
+    border-top: 0;
+    border-left: 1px solid var(--line);
+    padding: 0 0 0 16px;
+  }
+
+  .catalog {
+    min-height: 0;
+  }
+
+  .part-list {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+  }
+
+  /* Launch window */
+  .window-layout {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .window-map {
+    display: flex;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .window-map .orbit-map {
+    max-width: none;
+    height: 100%;
+  }
+
+  .window-side {
+    min-height: 0;
+    overflow-y: auto;
+    gap: clamp(10px, 1.6vh, 16px);
+  }
+
+  /* Columns that scroll inside: their blocks keep full height instead of squashing. */
+  .window-side > *,
+  .debrief-column > * {
+    flex-shrink: 0;
+  }
+
+  .window-date {
+    margin-bottom: clamp(8px, 1.6vh, 16px);
+  }
+
+  .window-date-value {
+    font-size: clamp(24px, 3.8vh, 32px);
+  }
+
+  .window-side .panel-pad {
+    padding: clamp(14px, 2.2vh, 20px);
+  }
+
+  .window-note {
+    margin-top: clamp(8px, 1.4vh, 14px);
+  }
+
+  .btn-launch {
+    height: clamp(44px, 6.4vh, 56px);
+  }
+
+  /* Mission */
+  .mission-layout {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .mission-layout .log {
+    min-height: 0;
+    max-height: none;
+  }
+
+  .mission-left {
+    min-height: 0;
+    overflow: hidden;
+    gap: clamp(10px, 1.6vh, 16px);
+  }
+
+  .mission-left > * {
+    flex-shrink: 0;
+  }
+
+  .mission-left .trajectory-panel {
+    flex: 1 1 0;
+    min-height: 90px;
+    display: flex;
+  }
+
+  .trajectory {
+    height: 100%;
+  }
+
+  .live-stat {
+    padding: clamp(8px, 1.4vh, 14px) 16px;
+  }
+
+  /* Debrief: three columns that scroll inside when notes are long. */
+  .debrief-hero {
+    flex-shrink: 0;
+    padding: clamp(12px, 2vh, 20px) 28px;
+  }
+
+  .debrief-verdict h3 {
+    font-size: clamp(22px, 3.4vh, 30px);
+  }
+
+  .debrief-total-value {
+    font-size: clamp(36px, 6vh, 56px);
+  }
+
+  .debrief-grid {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .debrief-column {
+    min-height: 0;
+    overflow-y: auto;
   }
 }

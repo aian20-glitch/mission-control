@@ -38,12 +38,12 @@ export function Onboarding({ onClose }: { onClose: () => void }) {
   }, [showResources, lit])
 
   return (
-    <div className="overlay" role="dialog" aria-modal="true" aria-label="Mission briefing">
+    <div className="overlay" role="dialog" aria-modal="true" aria-label={texts.ui.onboarding.label}>
       <div className="modal onboard">
         <div className="onboard-head">
-          <span className="capcom-sign">CAPCOM · INCOMING</span>
+          <span className="capcom-sign">{texts.ui.onboarding.incoming}</span>
           <button type="button" className="btn btn-quiet btn-sm" onClick={onClose}>
-            Skip
+            {texts.ui.skip}
           </button>
         </div>
         <div className="onboard-body mono">
@@ -68,7 +68,7 @@ export function Onboarding({ onClose }: { onClose: () => void }) {
         </div>
         <div className="onboard-actions">
           <button type="button" className="btn btn-primary" onClick={onClose}>
-            Got it
+            {texts.ui.onboarding.ok}
           </button>
         </div>
       </div>

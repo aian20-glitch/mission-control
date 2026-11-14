@@ -25,8 +25,10 @@ src/
   three/                 (next) SceneCanvas, PlanetScene, SpacecraftScene, LaunchScene, OrbitScene
   components/            ResourceBar, PartCard, MissionLog, HudButton, Tooltip, PlanetOrb, SpacecraftSchematic, OrbitMap, ...
   styles/                tokens.css, global.css, screens.css
-  data/                  planets.json, parts.json, events.json, texts.json
+  data/                  planets.json, parts.json, events.json, texts.json (English: all numbers + texts)
+  data/ru/               Russian texts only, same structure (merged in logic/data.ts)
 scripts/balance.ts       (npm run balance)
+scripts/i18n.ts          (npm run i18n: every English text has a Russian one)
 public/ (models/ sfx/ later)
 docs/GDD.md, DECISIONS.md, DATA_SCHEMA.md, CHALLENGE.md
 ```
@@ -34,13 +36,15 @@ docs/GDD.md, DECISIONS.md, DATA_SCHEMA.md, CHALLENGE.md
 ## Data
 - Game numbers and texts: `src/data/*.json`, typed in `src/logic/types.ts`, described in `docs/DATA_SCHEMA.md`.
 - After changing numbers run `npm run balance`: every target needs at least one ★★★ design.
+- Two languages (EN, RU). No text in components: put it in `texts.json` → `ui`, add the Russian in `data/ru/`, run `npm run i18n`.
 
 ## Rules
 - Readable, plain code. No clever one-liners or compact tricks.
 - Game rules live in `logic/` as pure functions; components only display and call them.
 - 3D only in 4 scenes (planet, spacecraft, launch, orbit). Keep models light (< 5 MB total), lazy-load.
 - UI: dark (#05080D), translucent panels with backdrop blur, one accent per screen (teal #5DCAA5), amber for warnings, red only for critical + launch. Inter for UI, JetBrains Mono for numbers and log. Thin 1px lines, 12–16px radius, lots of whitespace.
-- Motion: soft spring/ease transitions (150–400 ms UI, ≤10 s cinematics with Skip). All UI text in English.
+- Motion: soft spring/ease transitions (150–400 ms UI, ≤10 s cinematics with Skip). UI text in English + Russian.
+- Desktop screens fit the window with no page scroll (block "Fit to screen" at the end of screens.css); long lists scroll inside their panel.
 - Before a big feature: short plan. After each working step: `npm run build` passes → check in browser → commit.
 - Keep answers short; show only changed parts, not whole files.
 - Priorities: P0 → P1 → P2 (docs/DECISIONS.md, "Отложено"). Do not start P2 while P0 is broken.

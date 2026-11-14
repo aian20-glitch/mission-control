@@ -1,6 +1,6 @@
 // Resource model: turns the player's choices into the six resources.
 // Pure functions only — no React, no store.
-import { bus, fill, getDestination, getOrbit, getPart, texts } from './data'
+import { bus, fill, getDestination, getOrbit, getPart, money, num, texts } from './data'
 import type { Design, Destination, DestinationId, Issue, MissionContext, OrbitId, ResourceBarData, ResourceReport, Severity } from './types'
 
 export const WINDOW_MONTHS = 36 // launch window slider: Jan 2027 .. Dec 2029
@@ -105,10 +105,6 @@ function round1(value: number): number {
   return Math.round(value * 10) / 10
 }
 
-function formatNumber(value: number): string {
-  return Math.round(value).toLocaleString('en-US')
-}
-
 export function computeResources(ctx: MissionContext): ResourceReport {
   const { destination, orbit, launchVehicle, powerSource, instruments, comms, extras } = ctx
   const issues: Issue[] = []
@@ -142,7 +138,7 @@ export function computeResources(ctx: MissionContext): ResourceReport {
   for (const extra of extras) {
     costBreakdown.push({ label: extra.name, cost: extra.cost })
   }
-  costBreakdown.push({ label: 'Operations (' + Math.round(operationsMonths) + ' months)', cost: operationsCost })
+  costBreakdown.push({ label: fill(texts.ui.assembly.operations, { n: Math.round(operationsMonths) }), cost: operationsCost })
   const cost = costBreakdown.reduce((sum, item) => sum + item.cost, 0)
   const budgetLimit = destination.budget
 
@@ -192,9 +188,9 @@ export function computeResources(ctx: MissionContext): ResourceReport {
       severity: 'over',
       critical: false,
       text: fill(issueText.massOver, {
-        over: formatNumber(totalMass - massCapacity),
+        over: num(totalMass - massCapacity),
         rocket: launchVehicle.name,
-        capacity: formatNumber(massCapacity),
+        capacity: num(massCapacity),
         destination: destination.name,
       }),
     })
@@ -256,6 +252,7 @@ export function computeResources(ctx: MissionContext): ResourceReport {
 
   // --- Bars for the HUD ---
   const r = texts.resources
+  const u = texts.units
   const budgetStatus: Severity = ctx.sandbox ? 'ok' : cost > budgetLimit ? 'over' : cost > budgetLimit * 0.9 ? 'warn' : 'ok'
   const massStatus: Severity = totalMass > massCapacity ? 'over' : totalMass > massCapacity * 0.9 ? 'warn' : 'ok'
   const powerStatus: Severity = powerAvailable < baseNeed ? 'over' : powerNeeded > powerAvailable ? 'warn' : 'ok'
@@ -270,7 +267,7 @@ export function computeResources(ctx: MissionContext): ResourceReport {
       value: cost,
       limit: budgetLimit,
       unit: '$M',
-      display: ctx.sandbox ? '$' + cost + 'M · no limit' : '$' + cost + 'M / ' + budgetLimit,
+      display: ctx.sandbox ? money(cost) + ' · ' + texts.ui.assembly.noLimit : money(cost) + ' / ' + num(budgetLimit),
       status: budgetStatus,
       explain: r.budget.explain,
     },
@@ -280,7 +277,7 @@ export function computeResources(ctx: MissionContext): ResourceReport {
       value: totalMass,
       limit: massCapacity,
       unit: 'kg',
-      display: formatNumber(totalMass) + ' / ' + formatNumber(massCapacity) + ' kg',
+      display: num(totalMass) + ' / ' + num(massCapacity) + ' ' + u.kg,
       status: massStatus,
       explain: r.mass.explain,
     },
@@ -290,7 +287,7 @@ export function computeResources(ctx: MissionContext): ResourceReport {
       value: powerNeeded,
       limit: powerAvailable,
       unit: 'W',
-      display: powerNeeded + ' / ' + powerAvailable + ' W',
+      display: powerNeeded + ' / ' + powerAvailable + ' ' + u.watt,
       status: powerStatus,
       explain: r.power.explain,
     },
@@ -300,7 +297,7 @@ export function computeResources(ctx: MissionContext): ResourceReport {
       value: dataGenerated,
       limit: MAX_DATA_REFERENCE,
       unit: 'GB/day',
-      display: dataGenerated.toFixed(1) + ' GB/day',
+      display: decimal(dataGenerated) + ' ' + u.gbDay,
       status: dataStatus,
       explain: r.data.explain,
     },
@@ -310,7 +307,7 @@ export function computeResources(ctx: MissionContext): ResourceReport {
       value: deliveredShare * 100,
       limit: 100,
       unit: '%',
-      display: downlink.toFixed(1) + ' GB/day · ' + Math.round(deliveredShare * 100) + '% sent',
+      display: decimal(downlink) + ' ' + u.gbDay + ' · ' + fill(texts.ui.assembly.sent, { n: Math.round(deliveredShare * 100) }),
       status: commsStatus,
       explain: r.comms.explain,
     },
@@ -320,7 +317,7 @@ export function computeResources(ctx: MissionContext): ResourceReport {
       value: lifetime,
       limit: requiredMonths,
       unit: 'months',
-      display: formatLifetime(lifetime) + ' / ' + requiredMonths + ' mo',
+      display: formatLifetime(lifetime) + ' / ' + requiredMonths + ' ' + u.monthsShort,
       status: timeStatus,
       explain: r.time.explain,
     },
@@ -351,17 +348,28 @@ export function computeResources(ctx: MissionContext): ResourceReport {
 
 export function formatLifetime(months: number): string {
   if (months < 1) {
-    return Math.max(1, Math.round(months * 30)) + ' days'
+    return Math.max(1, Math.round(months * 30)) + ' ' + texts.units.days
   }
-  return Math.round(months) + ' mo'
+  return Math.round(months) + ' ' + texts.units.monthsShort
 }
 
-const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+// One decimal place with the language's decimal mark: 2.5 (EN) or 2,5 (RU).
+export function decimal(value: number): string {
+  return value.toLocaleString(texts.units.locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+}
+
+// Trip length: "8 months" or "5.6 years".
+export function formatTrip(months: number): string {
+  if (months >= 24) {
+    return decimal(months / 12) + ' ' + texts.units.years
+  }
+  return Math.round(months) + ' ' + texts.units.months
+}
 
 // Month index 0 = January 2027.
 export function monthLabel(month: number): string {
   const year = 2027 + Math.floor(month / 12)
-  return MONTH_NAMES[month % 12] + ' ' + year
+  return texts.units.monthNames[month % 12] + ' ' + year
 }
 
 // Ideal (Hohmann) transfer from Earth's orbit (1 AU) to a circular orbit of `orbitAU`.

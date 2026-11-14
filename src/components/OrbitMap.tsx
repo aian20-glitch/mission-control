@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { texts } from '../logic/data'
 import { hohmann } from '../logic/resources'
 import type { Destination } from '../logic/types'
 
@@ -54,6 +55,7 @@ export function OrbitMap({ destination, month, good }: OrbitMapProps) {
   }
 
   const accent = good ? '#5dcaa5' : '#ef9f27'
+  const t = texts.ui.window
   const ticks: ReactNode[] = []
   for (let i = 0; i < 12; i++) {
     const p1 = point(EARTH_R - 4, earthAngle(i))
@@ -62,7 +64,7 @@ export function OrbitMap({ destination, month, good }: OrbitMapProps) {
   }
 
   return (
-    <svg className="orbit-map" viewBox="0 0 400 400" role="img" aria-label="Map of planet positions and transfer path">
+    <svg className="orbit-map" viewBox="0 0 400 400" role="img" aria-label={t.mapLabel}>
       <defs>
         <radialGradient id="sunGlow">
           <stop offset="0%" stopColor="#ffe9b0" />
@@ -94,18 +96,18 @@ export function OrbitMap({ destination, month, good }: OrbitMapProps) {
 
       <circle cx={targetNow.x} cy={targetNow.y} r="7" fill={destination.map.color} />
       <text x={targetNow.x + 11} y={targetNow.y + 4} className="map-label">
-        {destination.id === 'europa' ? 'Jupiter' : destination.name}
+        {destination.id === 'europa' ? t.jupiter : destination.name}
       </text>
 
       <circle cx={earth.x} cy={earth.y} r="6" fill="#4f9be8" />
       <text x={earth.x + 10} y={earth.y + 4} className="map-label">
-        Earth
+        {t.earth}
       </text>
 
       <g className="map-legend" transform="translate(16 372)">
         <circle cx="4" cy="-4" r="4" fill="none" stroke={destination.map.color} strokeDasharray="2 2" />
         <text x="14" y="0" className="map-label">
-          where it will be when you arrive
+          {t.whereLater}
         </text>
       </g>
     </svg>
@@ -113,22 +115,23 @@ export function OrbitMap({ destination, month, good }: OrbitMapProps) {
 }
 
 function MoonMap() {
+  const t = texts.ui.window
   return (
-    <svg className="orbit-map" viewBox="0 0 400 400" role="img" aria-label="Earth and Moon">
+    <svg className="orbit-map" viewBox="0 0 400 400" role="img" aria-label={t.earth + ' · ' + t.moon}>
       <circle cx="200" cy="200" r="150" fill="none" stroke="rgba(255,255,255,0.18)" strokeDasharray="2 5" />
       <circle cx="200" cy="200" r="22" fill="#4f9be8" />
       <text x="228" y="204" className="map-label">
-        Earth
+        {t.earth}
       </text>
       <g className="moon-orbit">
         <circle cx="350" cy="200" r="9" fill="#b9b5ae" />
         <text x="320" y="225" className="map-label">
-          Moon
+          {t.moon}
         </text>
       </g>
       <path className="transfer-path" d="M222,200 C260,120 330,130 345,190" fill="none" stroke="#5dcaa5" strokeWidth="1.6" />
       <text x="200" y="380" textAnchor="middle" className="map-label">
-        about 4 days · 384,400 km
+        {t.moonTrip}
       </text>
     </svg>
   )

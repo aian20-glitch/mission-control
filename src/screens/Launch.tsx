@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { Readout } from '../components/Readout'
-import { texts } from '../logic/data'
+import { fill, num, texts } from '../logic/data'
 import { useMission, useMissionReport } from '../store/useMission'
 
 type RocketSize = 'light' | 'medium' | 'heavy'
@@ -73,6 +73,7 @@ export function Launch() {
   const finishedRef = useRef(false)
 
   const size = data ? rocketSize(data.ctx.launchVehicle.id) : 'light'
+  const t = texts.ui.launch
 
   function finish() {
     if (finishedRef.current) {
@@ -97,7 +98,7 @@ export function Launch() {
 
     // Countdown T-5 .. T-0
     for (let i = 5; i >= 0; i--) {
-      tl.call(() => setCountdown(i === 0 ? 'IGNITION' : 'T-' + i), [], (5 - i) * 0.55)
+      tl.call(() => setCountdown(i === 0 ? t.ignition : 'T-' + i), [], (5 - i) * 0.55)
     }
     tl.addLabel('ignition', 2.75)
     tl.to(q('.rocket-lower .flame'), { scaleY: 1, opacity: 1, duration: 0.4, ease: 'power2.out' }, 'ignition')
@@ -107,21 +108,21 @@ export function Launch() {
     // Lift-off and climb: the world drops away (camera follows the rocket).
     tl.addLabel('liftoff', 'ignition+=0.7')
     tl.call(() => {
-      setCountdown('LIFT-OFF')
-      setCaption(texts.log.launch[1].text.replace('{rocket}', data ? data.ctx.launchVehicle.name : 'rocket'))
+      setCountdown(t.liftoff)
+      setCaption(fill(texts.log.launch[1].text, { rocket: data ? data.ctx.launchVehicle.name : '' }))
     }, [], 'liftoff')
     tl.to(q('.launch-rocket'), { y: '-22vh', duration: 2.2, ease: 'power2.in' }, 'liftoff')
     tl.to(q('.launch-world'), { y: '140vh', duration: 6.5, ease: 'power2.in' }, 'liftoff+=0.6')
     tl.to(q('.launch-sky'), { opacity: 0, duration: 5, ease: 'power1.in' }, 'liftoff+=1')
     tl.to(telemetryProxy, { time: 160, altitude: 70, speed: 2300, duration: 3.4, ease: 'power2.in', onUpdate: pushTelemetry }, 'liftoff')
 
-    tl.call(() => setCaption('MAX Q: strongest air pressure on the rocket'), [], 'liftoff+=1.6')
+    tl.call(() => setCaption(t.maxQ), [], 'liftoff+=1.6')
 
     // Stage separation: the empty first stage falls away.
     tl.addLabel('separation', 'liftoff+=3.4')
     tl.call(() => {
-      setCountdown('STAGE SEP')
-      setCaption('First stage empty and dropped: a lighter rocket climbs faster')
+      setCountdown(t.stageSep)
+      setCaption(t.separation)
     }, [], 'separation')
     tl.to(q('.rocket-lower'), { y: '60vh', rotation: -18, opacity: 0, duration: 2.4, ease: 'power1.in' }, 'separation')
     tl.to(q('.flame-upper'), { scaleY: 1, opacity: 1, duration: 0.3, ease: 'power2.out' }, 'separation+=0.4')
@@ -134,8 +135,8 @@ export function Launch() {
     tl.to(q('.launch-earth'), { opacity: 1, duration: 2.2, ease: 'power1.out' }, 'orbit')
     tl.to(q('.flame-upper'), { scaleY: 0, opacity: 0, duration: 0.4 }, 'orbit+=1.6')
     tl.call(() => {
-      setCountdown('ORBIT')
-      setCaption('In orbit at 7.8 km/s. Next stop: ' + (data ? data.ctx.destination.name : 'space'))
+      setCountdown(t.orbit)
+      setCaption(fill(t.inOrbit, { destination: data ? data.ctx.destination.name : '' }))
     }, [], 'orbit+=1.4')
     tl.to({}, { duration: 1.2 })
 
@@ -191,9 +192,9 @@ export function Launch() {
         <div className="launch-telemetry">
           <Readout
             rows={[
-              { label: 'MET', value: 'T+' + String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0') },
-              { label: 'Altitude', value: Math.round(telemetry.altitude) + ' KM' },
-              { label: 'Speed', value: Math.round(telemetry.speed * 3.6).toLocaleString('en-US') + ' KM/H' },
+              { label: t.met, value: 'T+' + String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0') },
+              { label: t.altitude, value: Math.round(telemetry.altitude) + ' ' + texts.units.km.toUpperCase() },
+              { label: t.speed, value: num(telemetry.speed * 3.6) + ' ' + texts.units.kmh.toUpperCase() },
             ]}
           />
         </div>
@@ -203,7 +204,7 @@ export function Launch() {
       </div>
 
       <button type="button" className="btn btn-quiet btn-sm launch-skip" onClick={finish}>
-        Skip
+        {texts.ui.skip}
       </button>
     </section>
   )

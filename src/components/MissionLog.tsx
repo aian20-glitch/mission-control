@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { texts } from '../logic/data'
 import { useTypewriter } from './useTypewriter'
 
 export type LogTone = 'normal' | 'good' | 'bad' | 'lost' | 'event' | 'why'
@@ -22,7 +23,7 @@ function TypedText({ text }: { text: string }) {
 }
 
 // Mission Control log: newest line types out, older lines are static.
-export function MissionLog({ lines, title = 'Mission log' }: { lines: LogLine[]; title?: string }) {
+export function MissionLog({ lines, title = texts.ui.mission.log }: { lines: LogLine[]; title?: string }) {
   const bodyRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -36,7 +37,7 @@ export function MissionLog({ lines, title = 'Mission log' }: { lines: LogLine[];
     <div className="log panel">
       <div className="panel-title" style={{ padding: '14px 16px 0', marginBottom: 0 }}>
         <span className="eyebrow">{title}</span>
-        <span className="chip chip-accent">LIVE</span>
+        <span className="chip chip-accent">{texts.ui.mission.live}</span>
       </div>
       <div className="log-body" ref={bodyRef} aria-live="polite">
         {lines.map((line, index) => (

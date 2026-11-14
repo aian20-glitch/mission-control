@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { fill, texts } from '../logic/data'
 import type { ResourceBarData } from '../logic/types'
 import { Tooltip } from './Tooltip'
 
@@ -8,7 +9,7 @@ interface ResourceBarProps {
 }
 
 export function ResourceBar({ bar, highlight = false }: ResourceBarProps) {
-  const fill = bar.limit > 0 ? Math.min(1, bar.value / bar.limit) : 0
+  const share = bar.limit > 0 ? Math.min(1, bar.value / bar.limit) : 0
   const [shaking, setShaking] = useState(false)
   const previousStatus = useRef(bar.status)
 
@@ -36,14 +37,14 @@ export function ResourceBar({ bar, highlight = false }: ResourceBarProps) {
       <div className="resource-head">
         <span className="resource-label">{bar.label}</span>
         <Tooltip text={bar.explain} below>
-          <button type="button" className="resource-help" aria-label={'What is ' + bar.label + '?'}>
+          <button type="button" className="resource-help" aria-label={fill(texts.ui.whatIs, { label: bar.label })}>
             ?
           </button>
         </Tooltip>
       </div>
       <span className="resource-value">{bar.display}</span>
       <div className="resource-track">
-        <div className="resource-fill" style={{ width: fill * 100 + '%' }} />
+        <div className="resource-fill" style={{ width: share * 100 + '%' }} />
       </div>
     </div>
   )

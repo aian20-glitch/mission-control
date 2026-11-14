@@ -2,7 +2,7 @@
 // All calculations live in src/logic — the store only keeps choices and results.
 import { create } from 'zustand'
 import { useMemo } from 'react'
-import { copyDesign, getPart, partsData } from '../logic/data'
+import { copyDesign, getPart, partsData, setDataLanguage, type Language } from '../logic/data'
 import { buildContext, computeResources } from '../logic/resources'
 import { evaluateMission } from '../logic/scoring'
 import type { Design, DestinationId, MissionContext, MissionResult, OrbitId, ResolvedEvent, ResourceReport, SlotId } from '../logic/types'
@@ -11,7 +11,39 @@ export type Screen = 'title' | 'objective' | 'orbit' | 'assembly' | 'window' | '
 
 export const SCREEN_ORDER: Screen[] = ['title', 'objective', 'orbit', 'assembly', 'window', 'launch', 'mission', 'debrief']
 
+const LANGUAGE_KEY = 'mission-control-language'
+
+// Saved choice first, then the browser language. Storage can be blocked, so every access is guarded.
+function startLanguage(): Language {
+  try {
+    const saved = window.localStorage.getItem(LANGUAGE_KEY)
+    if (saved === 'en' || saved === 'ru') {
+      return saved
+    }
+  } catch {
+    // No storage: fall through to the browser language.
+  }
+  if (navigator.language.toLowerCase().startsWith('ru')) {
+    return 'ru'
+  }
+  return 'en'
+}
+
+function applyLanguage(lang: Language) {
+  setDataLanguage(lang)
+  document.documentElement.lang = lang
+  try {
+    window.localStorage.setItem(LANGUAGE_KEY, lang)
+  } catch {
+    // Not saved: the game still works in this language until reload.
+  }
+}
+
+const initialLanguage = startLanguage()
+applyLanguage(initialLanguage)
+
 interface MissionStore {
+  lang: Language
   screen: Screen
   sandbox: boolean
   onboardingSeen: boolean
@@ -24,6 +56,7 @@ interface MissionStore {
   result: MissionResult | null
   attempts: number
 
+  setLang: (lang: Language) => void
   goTo: (screen: Screen) => void
   startGame: (sandbox: boolean) => void
   finishOnboarding: () => void
@@ -51,6 +84,7 @@ function toggleInList(list: string[], id: string, max: number): string[] {
 }
 
 export const useMission = create<MissionStore>((set) => ({
+  lang: initialLanguage,
   screen: 'title',
   sandbox: false,
   onboardingSeen: false,
@@ -62,6 +96,11 @@ export const useMission = create<MissionStore>((set) => ({
   resolved: [],
   result: null,
   attempts: 0,
+
+  setLang: (lang) => {
+    applyLanguage(lang)
+    set({ lang })
+  },
 
   goTo: (screen) => set({ screen }),
 
@@ -146,6 +185,8 @@ export function useMissionReport(): { ctx: MissionContext; report: ResourceRepor
   const design = useMission((s) => s.design)
   const launchMonth = useMission((s) => s.launchMonth)
   const sandbox = useMission((s) => s.sandbox)
+  // The context holds translated names, so it is rebuilt when the language changes.
+  const lang = useMission((s) => s.lang)
 
   return useMemo(() => {
     if (!destinationId || !orbitId) {
@@ -154,5 +195,6 @@ export function useMissionReport(): { ctx: MissionContext; report: ResourceRepor
     const ctx = buildContext(destinationId, orbitId, design, launchMonth, sandbox)
     const report = computeResources(ctx)
     return { ctx, report }
-  }, [destinationId, orbitId, design, launchMonth, sandbox])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [destinationId, orbitId, design, launchMonth, sandbox, lang])
 }

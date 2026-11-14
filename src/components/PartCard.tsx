@@ -1,3 +1,5 @@
+import { fill, money, num, texts } from '../logic/data'
+import { decimal } from '../logic/resources'
 import type { Destination, Part } from '../logic/types'
 
 interface PartCardProps {
@@ -11,23 +13,25 @@ interface PartCardProps {
 }
 
 function statsFor(part: Part, destination: Destination): string[] {
-  const stats: string[] = ['$' + part.cost + 'M']
+  const t = texts.ui.assembly
+  const u = texts.units
+  const stats: string[] = [money(part.cost)]
   if (part.capacity) {
-    stats.push('lifts ' + part.capacity[destination.id].toLocaleString('en-US') + ' kg')
+    stats.push(fill(t.lifts, { n: num(part.capacity[destination.id]) }))
     return stats
   }
-  stats.push(part.mass + ' kg')
+  stats.push(num(part.mass) + ' ' + u.kg)
   if (part.output) {
     const here = part.powerType === 'solar' ? Math.round(part.output * destination.sunlight) : part.output
-    stats.push('+' + here + ' W here')
+    stats.push(fill(t.powerHere, { n: here }))
   } else if (part.power > 0) {
-    stats.push(part.power + ' W')
+    stats.push(part.power + ' ' + u.watt)
   }
   if (part.data !== undefined) {
-    stats.push(part.data + ' GB/day')
+    stats.push(part.data.toLocaleString(u.locale) + ' ' + u.gbDay)
   }
   if (part.downlink !== undefined) {
-    stats.push(Math.round(part.downlink * destination.linkFactor * 10) / 10 + ' GB/day home')
+    stats.push(fill(t.home, { n: decimal(part.downlink * destination.linkFactor) }))
   }
   return stats
 }
@@ -51,7 +55,7 @@ export function PartCard({ part, destination, selected, favorite, warning, onSel
       <span className="part-head">
         <span className="part-check" aria-hidden="true" />
         <span className="part-name">{part.name}</span>
-        {favorite && <span className="chip chip-accent">★ fits goal</span>}
+        {favorite && <span className="chip chip-accent">{texts.ui.assembly.fitsGoal}</span>}
         {warning && <span className="chip chip-warn">{warning}</span>}
       </span>
       <span className="part-short">{part.short}</span>
@@ -63,7 +67,12 @@ export function PartCard({ part, destination, selected, favorite, warning, onSel
       <span className="part-explain">
         <span>
           {part.explain}
-          {part.similarTo && <em className="part-similar"> {part.similarTo}. Approx. values.</em>}
+          {part.similarTo && (
+            <em className="part-similar">
+              {' '}
+              {part.similarTo}. {texts.ui.assembly.approx}
+            </em>
+          )}
         </span>
       </span>
     </button>

@@ -1,7 +1,7 @@
 // Mission events: which events happen for a design, and what each choice leads to.
 // Pure functions only.
 import { bus, eventsData, fill, texts } from './data'
-import { formatLifetime, hasPart, transferMonths, bestWindowMonth } from './resources'
+import { decimal, formatLifetime, formatTrip, hasPart, transferMonths, bestWindowMonth } from './resources'
 import type { Condition, MissionContext, MissionEvent, MissionPhase, Outcome, PlanStep, ResolvedEvent, ResourceReport } from './types'
 
 const PHASE_ORDER: MissionPhase[] = ['launch', 'cruise', 'arrival', 'operations']
@@ -59,7 +59,7 @@ function powerLossEvent(ctx: MissionContext, report: ResourceReport): MissionEve
     priority: 100,
     when: {},
     callsign: 'EECOM',
-    title: 'Power failure',
+    title: texts.ui.mission.powerFailure,
     text: fill(texts.issues.powerCheck, values),
     outcomes: [
       {
@@ -147,11 +147,7 @@ export function resolveAuto(event: MissionEvent, ctx: MissionContext, report: Re
 export function buildMissionPlan(ctx: MissionContext, report: ResourceReport, launchMonth: number | null): PlanStep[] {
   const month = launchMonth === null ? bestWindowMonth(ctx.destination) : launchMonth
   const transfer = transferMonths(ctx.destination, month)
-  const transferLabel = ctx.destination.window.alwaysOpen
-    ? ctx.destination.transfer.label
-    : transfer >= 24
-      ? (transfer / 12).toFixed(1) + ' years'
-      : Math.round(transfer) + ' months'
+  const transferLabel = ctx.destination.window.alwaysOpen ? ctx.destination.transfer.label : formatTrip(transfer)
 
   const values: Record<string, string | number> = {
     rocket: ctx.launchVehicle.name,
@@ -160,7 +156,7 @@ export function buildMissionPlan(ctx: MissionContext, report: ResourceReport, la
     powerAvailable: ctx.powerSource.output ?? 0,
     transfer: transferLabel,
     delay: ctx.destination.signalDelay,
-    data: report.dataGenerated.toFixed(1),
+    data: decimal(report.dataGenerated),
     share: Math.round(report.deliveredShare * 100),
     need: report.powerNeeded,
     available: report.powerAvailable,

@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { HudButton } from '../components/HudButton'
 import { PartCard } from '../components/PartCard'
 import { ResourcePanel } from '../components/ResourceBar'
-import { ScreenHeader } from '../components/ScreenHeader'
+import { ScreenHeader, stepLabel } from '../components/ScreenHeader'
 import { SpacecraftSchematic } from '../components/SpacecraftSchematic'
 import { StatusLights } from '../components/StatusLights'
-import { partsData, partsForSlot, texts } from '../logic/data'
+import { fill, money, num, partsData, partsForSlot, texts } from '../logic/data'
 import { instrumentWorks } from '../logic/resources'
 import type { Design, Issue, Part, SlotId } from '../logic/types'
 import { useMission, useMissionReport } from '../store/useMission'
@@ -33,8 +33,8 @@ function countInSlot(design: Design, slot: SlotId): number {
 function FlightNotes({ issues }: { issues: Issue[] }) {
   return (
     <div className="flight-notes">
-      <span className="eyebrow">Flight notes</span>
-      {issues.length === 0 && <p className="note note-ok">All systems nominal. Ready for the launch window.</p>}
+      <span className="eyebrow">{texts.ui.assembly.notes}</span>
+      {issues.length === 0 && <p className="note note-ok">{texts.ui.assembly.allGood}</p>}
       {issues.map((issue) => (
         <p key={issue.text} className={'note ' + (issue.severity === 'over' ? 'note-over' : 'note-warn')}>
           {issue.text}
@@ -59,19 +59,20 @@ export function Assembly() {
   const slotInfo = partsData.slots.find((s) => s.id === slot)
   const deadParts = design.instruments.filter((id) => !instrumentWorks(ctx, id))
   const blockingIssue = report.issues.find((issue) => issue.severity === 'over' && !issue.critical)
+  const t = texts.ui.assembly
 
   function warningFor(part: Part): string | null {
     if (part.requiresOrbit && !part.requiresOrbit.includes(ctx.orbit.id)) {
-      return 'lander only'
+      return t.landerOnly
     }
     if (ctx.orbit.requires && ctx.orbit.requires.includes(part.id) && !isSelected(design, part)) {
-      return 'required'
+      return t.required
     }
     if (part.powerType === 'solar' && ctx.destination.sunlight < 0.2) {
-      return 'weak this far'
+      return t.weakFar
     }
     if (part.capacity && part.capacity[ctx.destination.id] * ctx.windowFactor < report.totalMass) {
-      return 'too small'
+      return t.tooSmall
     }
     return null
   }
@@ -79,8 +80,8 @@ export function Assembly() {
   return (
     <section className="screen">
       <ScreenHeader
-        step="Step 3 of 6 · Build"
-        title="Build the spacecraft"
+        step={stepLabel(3, 'assembly')}
+        title={t.heading}
         capcom={texts.capcom.assembly}
         right={
           <div className="header-stat">
@@ -88,7 +89,7 @@ export function Assembly() {
               {ctx.destination.name} · {ctx.orbit.name}
             </span>
             <span className="header-stat-value mono">
-              ${report.cost}M <span className="faint">/ {ctx.sandbox ? '∞' : report.budgetLimit}</span>
+              {money(report.cost)} <span className="faint">/ {ctx.sandbox ? '∞' : num(report.budgetLimit)}</span>
             </span>
           </div>
         }
@@ -102,7 +103,7 @@ export function Assembly() {
             <span className="chip">{ctx.launchVehicle.name.toUpperCase()}</span>
             <span className="chip">{ctx.launchVehicle.stages}</span>
             <span className="chip chip-accent">
-              DRY {report.dryMass.toLocaleString('en-US')} KG · FUELED {report.totalMass.toLocaleString('en-US')} KG
+              {fill(t.massChip, { dry: num(report.dryMass), total: num(report.totalMass) })}
             </span>
           </div>
           <SpacecraftSchematic design={design} orbitId={ctx.orbit.id} hotPartId={hotPart} deadPartIds={deadParts} onHover={setHotPart} />
@@ -110,7 +111,7 @@ export function Assembly() {
         </div>
 
         <div className="catalog panel">
-          <div className="slot-tabs" role="tablist" aria-label="Part slots">
+          <div className="slot-tabs" role="tablist" aria-label={t.slots}>
             {partsData.slots.map((s) => (
               <button
                 key={s.id}
@@ -148,13 +149,13 @@ export function Assembly() {
 
       <div className="screen-actions">
         <HudButton variant="quiet" onClick={() => goTo('orbit')}>
-          Back
+          {texts.ui.back}
         </HudButton>
         <div className="screen-actions-right">
           {blockingIssue && <span className="action-reason">{blockingIssue.text}</span>}
           <StatusLights bars={report.bars} />
           <HudButton disabled={!report.canLaunch} onClick={() => goTo('window')}>
-            Next: launch window
+            {t.next}
           </HudButton>
         </div>
       </div>

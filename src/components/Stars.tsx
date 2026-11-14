@@ -1,8 +1,10 @@
+import { fill, texts } from '../logic/data'
+
 // 1–3 star rating with a staggered pop-in.
 export function Stars({ count, size = 44 }: { count: number; size?: number }) {
   const items = [0, 1, 2]
   return (
-    <div className="rating" role="img" aria-label={count + ' of 3 stars'}>
+    <div className="rating" role="img" aria-label={fill(texts.ui.debrief.stars, { n: count })}>
       {items.map((i) => (
         <svg
           key={i}

@@ -1,7 +1,7 @@
 import { HudButton } from '../components/HudButton'
 import { OrbitDiagram } from '../components/OrbitDiagram'
-import { ScreenHeader } from '../components/ScreenHeader'
-import { getDestination, getPart, texts } from '../logic/data'
+import { ScreenHeader, stepLabel } from '../components/ScreenHeader'
+import { fill, getDestination, getPart, texts } from '../logic/data'
 import { formatLifetime } from '../logic/resources'
 import { useMission } from '../store/useMission'
 
@@ -28,12 +28,13 @@ export function Orbit() {
     return null
   }
   const destination = getDestination(destinationId)
+  const t = texts.ui.orbit
 
   return (
     <section className="screen">
-      <ScreenHeader step="Step 2 of 6 · Orbit" title={'How do we meet ' + destination.name + '?'} capcom={texts.capcom.orbit} />
+      <ScreenHeader step={stepLabel(2, 'orbit')} title={fill(t.heading, { name: destination.name })} capcom={texts.capcom.orbit} />
 
-      <div className="orbit-grid" role="radiogroup" aria-label="Orbit type">
+      <div className="orbit-grid" role="radiogroup" aria-label={t.group}>
         {destination.orbits.map((orbit) => {
           const selected = orbit.id === orbitId
           return (
@@ -46,17 +47,19 @@ export function Orbit() {
               onClick={() => chooseOrbit(orbit.id)}
             >
               <OrbitDiagram orbitId={orbit.id} destination={destination} active={selected} />
-              <span className="orbit-name">{orbit.name}</span>
+              <span className="orbit-head">
+                <span className="orbit-name">{orbit.name}</span>
+                {orbit.requires && (
+                  <span className="chip chip-warn">{fill(t.needs, { parts: orbit.requires.map((id) => getPart(id).name).join(', ') })}</span>
+                )}
+              </span>
               <span className="orbit-summary">{orbit.summary}</span>
               <span className="orbit-stats">
-                <Meter label="Science" share={orbit.scienceMult / 1.5} display={'×' + orbit.scienceMult} />
-                <Meter label="Lifetime" share={orbit.lifetimeMonths / 48} display={formatLifetime(orbit.lifetimeMonths)} />
-                <Meter label="Braking fuel" share={(orbit.propellantFactor - 1) / 2.2} display={'+' + Math.round((orbit.propellantFactor - 1) * 100) + '% mass'} />
-                <Meter label="Link home" share={orbit.commsFactor} display={orbit.commsFactor >= 1 ? 'good' : 'weak'} />
+                <Meter label={t.science} share={orbit.scienceMult / 1.5} display={'×' + orbit.scienceMult.toLocaleString(texts.units.locale)} />
+                <Meter label={t.lifetime} share={orbit.lifetimeMonths / 48} display={formatLifetime(orbit.lifetimeMonths)} />
+                <Meter label={t.fuel} share={(orbit.propellantFactor - 1) / 2.2} display={fill(t.fuelValue, { n: Math.round((orbit.propellantFactor - 1) * 100) })} />
+                <Meter label={t.link} share={orbit.commsFactor} display={orbit.commsFactor >= 1 ? t.good : t.weak} />
               </span>
-              {orbit.requires && (
-                <span className="chip chip-warn">Needs: {orbit.requires.map((id) => getPart(id).name).join(', ')}</span>
-              )}
               <span className="orbit-explain">{orbit.explain}</span>
             </button>
           )
@@ -65,10 +68,10 @@ export function Orbit() {
 
       <div className="screen-actions">
         <HudButton variant="quiet" onClick={() => goTo('objective')}>
-          Back
+          {texts.ui.back}
         </HudButton>
         <HudButton disabled={!orbitId} onClick={() => goTo('assembly')}>
-          Build the spacecraft
+          {t.next}
         </HudButton>
       </div>
     </section>

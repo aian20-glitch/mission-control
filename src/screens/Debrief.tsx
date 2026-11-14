@@ -2,26 +2,28 @@ import { useMemo } from 'react'
 import { HudButton } from '../components/HudButton'
 import { ScreenHeader } from '../components/ScreenHeader'
 import { Stars } from '../components/Stars'
-import { getOrbit, getPart, texts } from '../logic/data'
+import { Tooltip } from '../components/Tooltip'
+import { fill, getOrbit, getPart, money, num, texts } from '../logic/data'
 import { formatLifetime } from '../logic/resources'
 import { evaluateDesign } from '../logic/scoring'
 import type { Design, Note } from '../logic/types'
 import { useMission, useMissionReport } from '../store/useMission'
 
 function verdictFor(lost: boolean, stars: number): string {
+  const t = texts.ui.debrief
   if (lost) {
-    return 'Mission lost'
+    return t.lost
   }
   if (stars === 3) {
-    return 'Outstanding mission'
+    return t.outstanding
   }
   if (stars === 2) {
-    return 'Mission success'
+    return t.success
   }
   if (stars === 1) {
-    return 'Partial success'
+    return t.partial
   }
-  return 'Goal not reached'
+  return t.failed
 }
 
 function partNames(design: Design): string {
@@ -29,27 +31,29 @@ function partNames(design: Design): string {
   return ids.map((id) => getPart(id).name).join(' · ')
 }
 
+// One part of the total score. The explanation shows on hover or focus.
 function ScoreTile({ label, weight, value, explain }: { label: string; weight: string; value: number; explain: string }) {
   return (
-    <div className="score-tile panel">
-      <div className="score-tile-head">
-        <span className="eyebrow">{label}</span>
-        <span className="faint mono">{weight}</span>
+    <Tooltip text={explain} below>
+      <div className="score-tile" tabIndex={0}>
+        <div className="score-tile-head">
+          <span className="eyebrow">{label}</span>
+          <span className="faint mono small">{weight}</span>
+        </div>
+        <span className="score-tile-value mono">{value}</span>
+        <div className="resource-track">
+          <div className="resource-fill" style={{ width: value + '%' }} />
+        </div>
       </div>
-      <span className="score-tile-value mono">{value}</span>
-      <div className="resource-track">
-        <div className="resource-fill" style={{ width: value + '%' }} />
-      </div>
-      <p className="score-tile-explain">{explain}</p>
-    </div>
+    </Tooltip>
   )
 }
 
-function NotesCard({ title, notes, tone, empty }: { title: string; notes: Note[]; tone: 'good' | 'bad'; empty: string }) {
+function NotesList({ title, notes, tone, empty }: { title: string; notes: Note[]; tone: 'good' | 'bad'; empty: string }) {
   return (
-    <div className={'notes-card panel panel-pad tone-' + tone}>
+    <div className={'notes-card tone-' + tone}>
       <span className="eyebrow">{title}</span>
-      {notes.length === 0 && <p className="dim">{empty}</p>}
+      {notes.length === 0 && <p className="dim small">{empty}</p>}
       <ul>
         {notes.map((note) => (
           <li key={note.title + note.text}>
@@ -84,9 +88,11 @@ export function Debrief() {
   }
   const { ctx, report } = data
 
+  const t = texts.ui.debrief
+
   return (
     <section className="screen">
-      <ScreenHeader step="Debrief" title="Mission report" capcom={texts.capcom.debrief} />
+      <ScreenHeader step={t.step} title={t.heading} capcom={texts.capcom.debrief} />
 
       <div className={'debrief-hero panel' + (result.lost ? ' is-lost' : '')}>
         <Stars count={result.stars} />
@@ -96,8 +102,13 @@ export function Debrief() {
             {destination.name} · {ctx.orbit.name} · {destination.objective.title}
           </p>
           <p className="faint mono small">
-            Worked {formatLifetime(result.missionMonths)} · {Math.round(result.deliveredShare * 100)}% of data reached Earth · ${report.cost}M spent
+            {fill(t.summary, { months: formatLifetime(result.missionMonths), share: Math.round(result.deliveredShare * 100), cost: money(report.cost) })}
           </p>
+        </div>
+        <div className="score-tiles">
+          <ScoreTile label={t.science} weight="60%" value={result.science} explain={t.scienceExplain} />
+          <ScoreTile label={t.efficiency} weight="20%" value={result.efficiency} explain={t.efficiencyExplain} />
+          <ScoreTile label={t.decisions} weight="20%" value={result.decisions} explain={t.decisionsExplain} />
         </div>
         <div className="debrief-total mono">
           <span className="debrief-total-value">{result.total}</span>
@@ -105,27 +116,28 @@ export function Debrief() {
         </div>
       </div>
 
-      <div className="score-tiles">
-        <ScoreTile label="Science" weight="60%" value={result.science} explain="How much of the goal's science reached Earth." />
-        <ScoreTile label="Efficiency" weight="20%" value={result.efficiency} explain="Money left over and a rocket that fits the job." />
-        <ScoreTile label="Decisions" weight="20%" value={result.decisions} explain="How you handled problems during the flight." />
-      </div>
-
       <div className="debrief-grid">
-        <NotesCard title="What helped" notes={result.helped} tone="good" empty="Nothing stood out this time." />
-        <NotesCard title="What hurt" notes={result.hurt} tone="bad" empty="Nothing went wrong. Textbook mission." />
-      </div>
+        <div className="panel panel-pad debrief-column">
+          <NotesList title={t.helped} notes={result.helped} tone="good" empty={t.helpedEmpty} />
+          <NotesList title={t.hurt} notes={result.hurt} tone="bad" empty={t.hurtEmpty} />
+        </div>
 
-      <div className="debrief-grid">
-        <div className="panel panel-pad real-mission">
-          <span className="eyebrow">Real mission · {destination.realMission.year}</span>
+        <div className="panel panel-pad debrief-column real-mission">
+          <span className="eyebrow">{fill(t.real, { year: destination.realMission.year })}</span>
           <h4>{destination.realMission.name}</h4>
           <p className="dim">{destination.realMission.text}</p>
           <p className="real-lesson">{destination.realMission.lesson}</p>
+          <div className="design-summary">
+            <span className="eyebrow">{t.yours}</span>
+            <p>
+              {ctx.launchVehicle.name} · {ctx.orbit.name} · {partNames(ctx.design)}
+            </p>
+          </div>
         </div>
-        <div className="panel panel-pad alternatives">
-          <span className="eyebrow">Other designs that work</span>
-          <p className="dim small">There is rarely one perfect answer. These also reach the goal:</p>
+
+        <div className="panel panel-pad debrief-column alternatives">
+          <span className="eyebrow">{t.others}</span>
+          <p className="dim small">{t.othersLead}</p>
           <ul>
             {alternatives.map((alt) => (
               <li key={alt.label}>
@@ -137,7 +149,7 @@ export function Debrief() {
                   {getPart(alt.design.launchVehicle).name} · {getOrbit(destination, alt.orbit).name} · {partNames(alt.design)}
                 </span>
                 <span className="alt-meta mono faint">
-                  ${alt.evaluation.report.cost}M · {alt.evaluation.report.totalMass.toLocaleString('en-US')} kg · science {alt.evaluation.result.science}
+                  {fill(t.altMeta, { cost: money(alt.evaluation.report.cost), mass: num(alt.evaluation.report.totalMass), science: alt.evaluation.result.science })}
                 </span>
               </li>
             ))}
@@ -145,18 +157,11 @@ export function Debrief() {
         </div>
       </div>
 
-      <div className="panel panel-pad design-summary">
-        <span className="eyebrow">Your design</span>
-        <p>
-          {ctx.launchVehicle.name} · {ctx.orbit.name} · {partNames(ctx.design)}
-        </p>
-      </div>
-
       <div className="screen-actions">
         <HudButton variant="quiet" onClick={newMission}>
-          New target
+          {t.newTarget}
         </HudButton>
-        <HudButton onClick={retry}>Try again with changes</HudButton>
+        <HudButton onClick={retry}>{t.retry}</HudButton>
       </div>
     </section>
   )
