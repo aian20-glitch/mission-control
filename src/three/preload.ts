@@ -6,6 +6,10 @@ export function loadLaunchScene() {
   return import('./LaunchScene')
 }
 
+export function loadStageScene() {
+  return import('./StageScene')
+}
+
 export function loadMissionScene() {
   return import('./MissionScene')
 }

@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react'
+import { SpaceStage } from './components/SpaceStage'
 import { StepBar } from './components/StepBar'
 import { Starfield } from './components/Starfield'
 import { LANGUAGES, texts } from './logic/data'
 import { Assembly } from './screens/Assembly'
 import { Debrief } from './screens/Debrief'
+import { Journey } from './screens/Journey'
 import { Launch } from './screens/Launch'
 import { LaunchWindow } from './screens/LaunchWindow'
 import { Mission } from './screens/Mission'
-import { Objective } from './screens/Objective'
 import { Orbit } from './screens/Orbit'
-import { Title } from './screens/Title'
 import { useMission, type Screen } from './store/useMission'
 
 const CALLSIGNS = ['CAPCOM', 'FLIGHT', 'FIDO', 'GUIDO', 'EECOM', 'INCO']
@@ -17,9 +17,9 @@ const CALLSIGNS = ['CAPCOM', 'FLIGHT', 'FIDO', 'GUIDO', 'EECOM', 'INCO']
 function renderScreen(screen: Screen) {
   switch (screen) {
     case 'title':
-      return <Title />
     case 'objective':
-      return <Objective />
+      // One screen for both: the trip from the Earth to the target.
+      return <Journey />
     case 'orbit':
       return <Orbit />
     case 'assembly':
@@ -88,6 +88,10 @@ export function App() {
   }, [screen])
   const showLaunch = screen === 'launch' || (launchFading && screen === 'mission')
   const languageLocked = screen === 'mission' || screen === 'debrief'
+  // The first screens share one 3D picture behind them.
+  const onStage = screen === 'title' || screen === 'objective' || screen === 'orbit'
+  // The title and target screens are one component: it must not restart when the screen name changes.
+  const screenKey = screen === 'title' || screen === 'objective' ? 'journey' : screen
 
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -97,6 +101,7 @@ export function App() {
     <div className="app">
       <Starfield />
       <div className="app-vignette" />
+      {onStage && <SpaceStage />}
 
       {!cinematic && (
         <header className="header">
@@ -120,7 +125,7 @@ export function App() {
         </header>
       )}
 
-      <main className="main" key={screen + '-' + lang}>
+      <main className={'main' + (onStage ? ' main-on-stage' : '')} key={screenKey + '-' + lang}>
         {renderScreen(screen)}
       </main>
 

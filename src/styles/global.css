@@ -1,6 +1,8 @@
 /* Base + shared components. Screen-specific styles live in screens.css. */
 @import '@fontsource-variable/inter';
-@import '@fontsource-variable/jetbrains-mono';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+@import '@fontsource/ibm-plex-mono/600.css';
 
 *,
 *::before,
@@ -48,6 +50,14 @@ h3,
 h4,
 p {
   margin: 0;
+}
+
+/* Headings and buttons use the mono face (the look of igloo.inc); long explanations stay in Inter. */
+h1,
+h2,
+h3,
+.btn {
+  font-family: var(--font-display);
 }
 
 .mono {

@@ -2373,3 +2373,341 @@
     height: 44px;
   }
 }
+
+
+/* ---------- New style: one 3D picture behind the first screens ---------- */
+
+.space-stage {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  animation: stageIn 1400ms var(--ease) both;
+}
+
+@keyframes stageIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Clicks pass through the empty parts of the screen to the planets in the 3D picture. */
+.main-on-stage {
+  pointer-events: none;
+}
+
+.main-on-stage .journey > *,
+.main-on-stage .orbit-screen > * {
+  pointer-events: auto;
+}
+
+.main-on-stage .orbit-screen > .orbit-layout,
+.main-on-stage .journey > .journey-scroll {
+  pointer-events: none;
+}
+
+.main-on-stage .orbit-list {
+  pointer-events: auto;
+}
+
+/* ---------- Journey: title + target in one ---------- */
+
+.journey {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+  display: flex;
+  align-items: center;
+}
+
+.journey-panel {
+  width: min(500px, 44vw);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(10px, 1.8vh, 16px);
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.7);
+  animation: journeyIn 700ms var(--ease) 300ms both;
+}
+
+@keyframes journeyIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.journey-title,
+.journey-name {
+  font-family: var(--font-display);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: -0.03em;
+  line-height: 0.96;
+  text-wrap: balance;
+}
+
+.journey-title {
+  font-size: clamp(40px, 5.4vw, 78px);
+}
+
+.journey-name {
+  font-size: clamp(52px, 7.4vw, 108px);
+}
+
+.journey-lead,
+.journey-text {
+  color: var(--text-dim);
+  font-size: clamp(14px, 1.9vh, 16px);
+  line-height: 1.55;
+  max-width: 46ch;
+}
+
+.journey-heading {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+}
+
+.journey-heading .chip {
+  margin-bottom: 10px;
+}
+
+.journey-subtitle {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.journey-goal {
+  font-size: clamp(17px, 2.5vh, 21px);
+  line-height: 1.3;
+  max-width: 30ch;
+}
+
+.journey-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.journey-hint {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+}
+
+.journey-brief {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(10px, 1.6vh, 14px);
+  animation: journeyIn 400ms var(--ease) both;
+}
+
+.journey-brief .fact {
+  font-size: 13px;
+}
+
+/* The worlds on the way: a column of dots on the right edge. */
+.journey-stops {
+  position: absolute;
+  right: var(--gutter);
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.journey-stop {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 0;
+  border: 0;
+  background: none;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color var(--dur) var(--ease);
+}
+
+.journey-stop:hover {
+  color: var(--text-dim);
+}
+
+.journey-stop-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1px solid var(--line-strong);
+  transition:
+    background var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease),
+    transform var(--dur) var(--ease);
+}
+
+.journey-stop.is-current {
+  color: var(--text);
+}
+
+.journey-stop.is-current .journey-stop-dot {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 12px rgba(93, 202, 165, 0.7);
+  transform: scale(1.3);
+}
+
+.journey-scroll {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(12px, 2.6vh, 26px);
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.journey-scroll-line {
+  width: 1px;
+  height: 42px;
+  background: linear-gradient(to bottom, transparent, var(--accent));
+  transform-origin: top;
+  animation: scrollLine 1900ms var(--ease) infinite;
+}
+
+@keyframes scrollLine {
+  0% {
+    transform: scaleY(0);
+    opacity: 0;
+  }
+  45% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleY(1);
+    opacity: 0;
+  }
+}
+
+.journey-steps {
+  position: absolute;
+  left: var(--gutter);
+  bottom: clamp(12px, 2.6vh, 24px);
+  display: flex;
+  gap: 8px;
+}
+
+/* ---------- Orbit: 3D view on the left, the three choices on the right ---------- */
+
+.orbit-layout {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 460px);
+  gap: clamp(16px, 2.4vw, 32px);
+}
+
+.orbit-view {
+  position: relative;
+}
+
+.orbit-caption {
+  position: absolute;
+  left: 0;
+  bottom: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+  color: var(--text-dim);
+  animation: journeyIn 400ms var(--ease) both;
+}
+
+.orbit-caption .eyebrow {
+  color: var(--accent);
+  font-size: 12px;
+}
+
+.orbit-list {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(8px, 1.4vh, 12px);
+  min-height: 0;
+}
+
+.orbit-list .orbit-card {
+  display: flex;
+  flex-direction: column;
+  grid-row: auto;
+  gap: clamp(6px, 1vh, 9px);
+  padding: clamp(10px, 1.7vh, 16px) 16px;
+  overflow: hidden;
+}
+
+.orbit-list .orbit-card:hover {
+  transform: translateX(-4px);
+}
+
+.orbit-list .orbit-name {
+  font-family: var(--font-display);
+  font-size: clamp(15px, 2.2vh, 18px);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.orbit-list .orbit-summary {
+  min-height: 0;
+  font-size: 13px;
+}
+
+.orbit-list .orbit-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px 18px;
+}
+
+.orbit-list .meter {
+  grid-template-columns: minmax(56px, auto) 1fr auto;
+  gap: 8px;
+  font-size: 11px;
+}
+
+/* The longer note shows only on the chosen card, to keep three cards on one screen. */
+.orbit-list .orbit-explain {
+  display: none;
+}
+
+.orbit-list .orbit-card.is-selected .orbit-explain {
+  display: block;
+  max-height: none;
+  opacity: 1;
+  padding-top: 8px;
+  font-size: 12px;
+}

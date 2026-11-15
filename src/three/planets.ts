@@ -220,6 +220,21 @@ export function createMoonMaterial(sun: THREE.Vector3): THREE.ShaderMaterial {
   })
 }
 
+// Europa: bright water ice with long reddish-brown cracks.
+export function createEuropaMaterial(sun: THREE.Vector3): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      uSun: { value: sun },
+      uLight: { value: new THREE.Color(0.86, 0.84, 0.78) },
+      uDark: { value: new THREE.Color(0.5, 0.36, 0.27) },
+      uCaps: { value: 0 },
+      uScale: { value: 3.4 },
+    },
+    vertexShader: EARTH_VERTEX,
+    fragmentShader: ROCKY_FRAGMENT,
+  })
+}
+
 export function createMarsMaterial(sun: THREE.Vector3): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
     uniforms: {

@@ -22,7 +22,8 @@
   --danger-soft: rgba(226, 75, 74, 0.16);
 
   --font-ui: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
+  --font-display: var(--font-mono);
 
   --radius: 16px;
   --radius-md: 12px;

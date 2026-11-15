@@ -228,6 +228,22 @@
       "oneMission": "One mission",
       "duration": "~5 MIN"
     },
+    "journey": {
+      "scroll": "Scroll to leave Earth",
+      "clickHint": "Or click the planet itself.",
+      "openBrief": "Open mission brief",
+      "closeBrief": "Close brief",
+      "choose": "Fly to {name}",
+      "next": "Next world",
+      "previous": "Back",
+      "stops": "Worlds on the way",
+      "earth": "Earth",
+      "home": "Home",
+      "leaving": "You are here",
+      "pathFlyby": "One pass, then gone",
+      "pathOrbiter": "Circles the planet for months",
+      "pathLander": "Lands and stays on the ground"
+    },
     "objective": {
       "heading": "Choose a Target",
       "sandboxChip": "SANDBOX · NO BUDGET LIMIT",
