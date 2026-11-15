@@ -7,6 +7,7 @@ import { useMission, useMissionReport } from '../store/useMission'
 import { createDirector, smoothStep } from '../three/launch/director'
 import { missionView } from '../three/missionView'
 import { loadLaunchScene } from '../three/preload'
+import { rocketSpec } from '../three/launch/rocketSpecs'
 
 const LaunchScene = lazy(loadLaunchScene)
 
@@ -64,15 +65,18 @@ export function Launch({ onGone }: { onGone: () => void }) {
   const finishedRef = useRef(false)
 
   const t = texts.ui.launch
-  const hasBoosters = data ? data.ctx.launchVehicle.id !== 'lv_light' : false
+  // What falls away first: side boosters, a whole first stage, or nothing.
+  const boosterKind = data ? rocketSpec(data.ctx.launchVehicle.id).boosters : 'none'
+  const hasBoosters = boosterKind !== 'none'
+  const stacked = boosterKind === 'stage'
   const milestones: MilestoneKey[] = hasBoosters
     ? ['liftoff', 'maxQ', 'boosters', 'stage', 'fairing', 'craft', 'depart']
     : ['liftoff', 'maxQ', 'stage', 'fairing', 'craft', 'depart']
   const milestoneLabels: Record<MilestoneKey, string> = {
     liftoff: t.msLiftoff,
     maxQ: t.msMaxQ,
-    boosters: t.msBoosters,
-    stage: t.msStage,
+    boosters: stacked ? t.msStage : t.msBoosters,
+    stage: stacked ? t.msStage2 : t.msStage,
     fairing: t.msFairing,
     craft: t.msCraft,
     depart: t.msDepart,
@@ -180,6 +184,10 @@ export function Launch({ onGone }: { onGone: () => void }) {
     const pushNumbers = () => setTelemetry({ ...numbers })
     const tl = gsap.timeline()
     timelineRef.current = tl
+    // While developing: the film can be paused at any second from the browser console.
+    if (import.meta.env.DEV) {
+      Object.assign(window, { __film: { timeline: tl, director: d } })
+    }
 
     // Countdown. The camera drifts slowly around the rocket; the tower arms swing away.
     for (let i = 5; i >= 1; i--) {
@@ -264,8 +272,8 @@ export function Launch({ onGone }: { onGone: () => void }) {
     if (hasBoosters) {
       tl.call(
         () => {
-          setCountdown(t.boosterSep)
-          setCaption(t.boosterCaption)
+          setCountdown(stacked ? t.stageSep : t.boosterSep)
+          setCaption(stacked ? t.separation : t.boosterCaption)
           reach('boosters')
         },
         [],
@@ -279,8 +287,8 @@ export function Launch({ onGone }: { onGone: () => void }) {
     tl.to(d, { engine: 0, duration: 0.25 }, AT.meco)
     tl.call(
       () => {
-        setCountdown(t.stageSep)
-        setCaption(t.separation)
+        setCountdown(stacked ? t.stage2Sep : t.stageSep)
+        setCaption(stacked ? t.separation2 : t.separation)
         reach('stage')
       },
       [],

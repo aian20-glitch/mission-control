@@ -31,11 +31,13 @@ const VERTEX = /* glsl */ `
   varying vec2 vUv;
   varying float vAlpha;
   varying vec3 vColor;
+  varying vec3 vCenter;
 
   void main() {
     vUv = uv;
     vAlpha = aAlpha;
     vColor = aColor;
+    vCenter = aCenter;
     vec4 mvPosition = modelViewMatrix * vec4(aCenter, 1.0);
     float c = cos(aSpin);
     float s = sin(aSpin);
@@ -48,9 +50,14 @@ const VERTEX = /* glsl */ `
 const FRAGMENT = /* glsl */ `
   uniform sampler2D uMap;
   uniform float uLight;
+  uniform vec3 uGlowPosition;
+  uniform vec3 uGlowColor;
+  uniform float uGlowRange;
+  uniform float uGlow;
   varying vec2 vUv;
   varying float vAlpha;
   varying vec3 vColor;
+  varying vec3 vCenter;
 
   void main() {
     vec4 tex = texture2D(uMap, vUv);
@@ -58,7 +65,12 @@ const FRAGMENT = /* glsl */ `
     if (alpha < 0.002) {
       discard;
     }
-    gl_FragColor = vec4(vColor * uLight, alpha);
+    // Each puff is a little darker underneath, which makes the cloud look thick.
+    float shade = mix(0.5, 1.0, smoothstep(0.15, 0.85, vUv.y));
+    // Smoke near the engines is lit by the flame.
+    float glow = uGlow * exp(-distance(vCenter, uGlowPosition) / uGlowRange);
+    vec3 color = vColor * uLight * shade + vColor * uGlowColor * glow;
+    gl_FragColor = vec4(color, alpha);
   }
 `
 
@@ -123,7 +135,14 @@ export class ParticlePool {
     geometry.instanceCount = count
 
     this.material = new THREE.ShaderMaterial({
-      uniforms: { uMap: { value: texture }, uLight: { value: 1 } },
+      uniforms: {
+        uMap: { value: texture },
+        uLight: { value: 1 },
+        uGlowPosition: { value: new THREE.Vector3() },
+        uGlowColor: { value: new THREE.Color(5.5, 2.6, 0.9) },
+        uGlowRange: { value: 30 },
+        uGlow: { value: 0 },
+      },
       vertexShader: VERTEX,
       fragmentShader: FRAGMENT,
       transparent: true,

@@ -1209,7 +1209,8 @@
   inset: 0;
   opacity: 0;
   pointer-events: none;
-  background: radial-gradient(ellipse at 50% 55%, #f4f7fb 0%, #dfe7f1 45%, #b9c8dc 100%);
+  /* Night clouds, lit from inside by the rocket's flame. */
+  background: radial-gradient(ellipse at 50% 60%, #ffe2b8 0%, #c98a5a 22%, #4a4f6b 55%, #10162a 100%);
 }
 
 .launch-loading {

@@ -1,97 +1,22 @@
+import { useGLTF } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import type { Design, OrbitId } from '../../logic/types'
 import type { LaunchDirector } from './director'
 import { Flame } from './Flame'
+import type { EngineSpec, RocketSpec } from './rocketSpecs'
 import { Spacecraft3D } from './Spacecraft3D'
 
-// Sizes in meters (1 unit = 1 m). Close to the real rockets in each class.
-export interface RocketSpec {
-  coreRadius: number
-  coreHeight: number
-  coreColor: string
-  boosters: 'none' | 'solid' | 'cores'
-  boosterRadius: number
-  boosterHeight: number
-  boosterOffset: number
-  upperRadius: number
-  upperHeight: number
-  fairingRadius: number
-  fairingCylinder: number
-  fairingNose: number
-  bellLength: number
-}
+// The rockets are real NASA models (NASA 3D Resources), simplified and cut into stages
+// by scripts/models/*.py. Every file holds the same named parts:
+//   stage1 (only the three-stage rocket), core, boosterL / boosterR (only the rocket with boosters),
+//   upper, fairingL / fairingR (the two halves of the nose).
+// Sizes are in meters (1 unit = 1 m), measured from the bottom of the engines.
 
-const INTERSTAGE = 1.4
-
-const SPECS: Record<string, RocketSpec> = {
-  // Delta II class: one core, small upper stage.
-  lv_light: {
-    coreRadius: 1.25,
-    coreHeight: 24,
-    coreColor: '#e8e6e0',
-    boosters: 'none',
-    boosterRadius: 0,
-    boosterHeight: 0,
-    boosterOffset: 0,
-    upperRadius: 1.25,
-    upperHeight: 6,
-    fairingRadius: 1.5,
-    fairingCylinder: 3.8,
-    fairingNose: 4.6,
-    bellLength: 1.8,
-  },
-  // Atlas V class: bronze core with solid boosters strapped on.
-  lv_medium: {
-    coreRadius: 1.9,
-    coreHeight: 31,
-    coreColor: '#c98e58',
-    boosters: 'solid',
-    boosterRadius: 0.8,
-    boosterHeight: 18,
-    boosterOffset: 2.85,
-    upperRadius: 1.6,
-    upperHeight: 11,
-    fairingRadius: 2.5,
-    fairingCylinder: 6,
-    fairingNose: 6.5,
-    bellLength: 2.2,
-  },
-  // Falcon Heavy class: three cores side by side.
-  lv_heavy: {
-    coreRadius: 1.8,
-    coreHeight: 41,
-    coreColor: '#eeece6',
-    boosters: 'cores',
-    boosterRadius: 1.8,
-    boosterHeight: 41,
-    boosterOffset: 3.75,
-    upperRadius: 1.8,
-    upperHeight: 12,
-    fairingRadius: 2.6,
-    fairingCylinder: 6.5,
-    fairingNose: 6.8,
-    bellLength: 1.7,
-  },
-}
-
-export function rocketSpec(launchVehicleId: string): RocketSpec {
-  return SPECS[launchVehicleId] ?? SPECS.lv_light
-}
-
-// Heights along the rocket, measured from the bottom of the engines.
-export function rocketLayout(spec: RocketSpec) {
-  const coreBottom = spec.bellLength
-  const coreTop = coreBottom + spec.coreHeight
-  const upperBottom = coreTop + INTERSTAGE
-  const upperTop = upperBottom + spec.upperHeight
-  const boattail = spec.fairingRadius > spec.upperRadius + 0.05 ? 1.4 : 0
-  const fairingTop = upperTop + boattail + spec.fairingCylinder + spec.fairingNose
-  const payloadScale = spec.fairingRadius * 0.62
-  const payloadY = upperTop + boattail + payloadScale * 0.95
-  return { coreBottom, coreTop, upperBottom, upperTop, boattail, fairingTop, payloadScale, payloadY, length: fairingTop }
-}
+const MODEL_FOLDER = import.meta.env.BASE_URL + 'models/'
+// The models are packed with Draco; the unpacker is served from our own site, not a CDN.
+const DRACO_FOLDER = import.meta.env.BASE_URL + 'draco/'
 
 // Points on the scene that the camera and the smoke need to know about.
 export interface RocketMarkers {
@@ -111,38 +36,50 @@ function bellGeometry(exitRadius: number, length: number): THREE.LatheGeometry {
   return new THREE.LatheGeometry(points, 28)
 }
 
-// Half of the nose cone (fairing). side 1 = the +X half, side -1 = the -X half.
-function fairingGeometry(spec: RocketSpec, boattail: number, side: number): THREE.LatheGeometry {
-  const points: THREE.Vector2[] = [new THREE.Vector2(spec.upperRadius, 0)]
-  if (boattail > 0) {
-    points.push(new THREE.Vector2(spec.fairingRadius, boattail))
-  }
-  points.push(new THREE.Vector2(spec.fairingRadius, boattail + spec.fairingCylinder))
-  for (let i = 1; i <= 12; i++) {
-    const t = i / 12
-    const r = spec.fairingRadius * Math.pow(Math.cos((t * Math.PI) / 2), 0.75)
-    points.push(new THREE.Vector2(Math.max(0.01, r), boattail + spec.fairingCylinder + t * spec.fairingNose))
-  }
-  return new THREE.LatheGeometry(points, 24, side > 0 ? 0 : Math.PI, Math.PI)
+interface Part {
+  object: THREE.Object3D
+  // Where the middle of the part sits when the rocket is whole.
+  rest: THREE.Vector3
 }
 
-// Where the engine bells sit under one core, and how wide each one is.
-function bellCluster(spec: RocketSpec, radius: number): { x: number; z: number; r: number }[] {
-  if (spec.boosters === 'cores') {
-    const bells = [{ x: 0, z: 0, r: radius * 0.24 }]
-    for (let i = 0; i < 8; i++) {
-      const angle = (i * Math.PI) / 4
-      bells.push({ x: Math.cos(angle) * radius * 0.64, z: Math.sin(angle) * radius * 0.64, r: radius * 0.22 })
+type PartName = 'stage1' | 'core' | 'boosterL' | 'boosterR' | 'upper' | 'fairingL' | 'fairingR'
+
+const PART_NAMES: PartName[] = ['stage1', 'core', 'boosterL', 'boosterR', 'upper', 'fairingL', 'fairingR']
+
+// Take the named parts out of the loaded file. Each part is moved to its own origin,
+// so the group that holds it can be placed, pushed away and tumbled around its middle.
+function takeParts(scene: THREE.Object3D, plainPaint: boolean): Partial<Record<PartName, Part>> {
+  const copy = scene.clone(true)
+  const parts: Partial<Record<PartName, Part>> = {}
+  for (const name of PART_NAMES) {
+    const object = copy.getObjectByName(name)
+    if (!object) {
+      continue
     }
-    return bells
+    const rest = object.position.clone()
+    object.position.set(0, 0, 0)
+    object.traverse((child) => {
+      const mesh = child as THREE.Mesh
+      if (!mesh.isMesh) {
+        return
+      }
+      mesh.frustumCulled = false
+      const material = (mesh.material as THREE.MeshStandardMaterial).clone()
+      // The nose halves are open shells: their inside must be drawn too.
+      if (name === 'fairingL' || name === 'fairingR') {
+        material.side = THREE.DoubleSide
+      }
+      material.envMapIntensity = 1.15
+      if (plainPaint && material.map) {
+        material.map = null
+        material.color.set('#e9e7e1')
+        material.roughness = 0.45
+      }
+      mesh.material = material
+    })
+    parts[name] = { object, rest }
   }
-  if (spec.boosters === 'solid') {
-    return [
-      { x: -radius * 0.42, z: 0, r: radius * 0.4 },
-      { x: radius * 0.42, z: 0, r: radius * 0.4 },
-    ]
-  }
-  return [{ x: 0, z: 0, r: radius * 0.72 }]
+  return parts
 }
 
 interface RocketProps {
@@ -157,79 +94,75 @@ interface RocketProps {
 // The whole rocket. Its parts move apart when the director's separation values go from 0 to 1.
 // All motion here is relative to the rocket: a dropped stage "falls behind" because the rest keeps speeding up.
 export function Rocket({ spec, design, orbitId, director, glowTexture, markers }: RocketProps) {
-  const layout = rocketLayout(spec)
-  const L = layout.length
+  const L = spec.length
+  const gltf = useGLTF(MODEL_FOLDER + spec.file, DRACO_FOLDER)
+  const parts = useMemo(() => takeParts(gltf.scene, spec.plainPaint), [gltf.scene, spec.plainPaint])
+
+  const stage1 = useRef<THREE.Group>(null)
   const core = useRef<THREE.Group>(null)
   const upper = useRef<THREE.Group>(null)
   const payload = useRef<THREE.Group>(null)
   const boosters = useRef<(THREE.Group | null)[]>([])
   const fairings = useRef<(THREE.Group | null)[]>([])
 
-  const materials = useMemo(
+  const extras = useMemo(
     () => ({
-      white: new THREE.MeshStandardMaterial({ color: '#eeece6', roughness: 0.45, metalness: 0.05 }),
-      core: new THREE.MeshStandardMaterial({ color: spec.coreColor, roughness: 0.55, metalness: 0.05 }),
-      dark: new THREE.MeshStandardMaterial({ color: '#1b1e23', roughness: 0.6, metalness: 0.2 }),
       metal: new THREE.MeshStandardMaterial({ color: '#555a62', roughness: 0.35, metalness: 0.85, side: THREE.DoubleSide }),
-      fairing: new THREE.MeshStandardMaterial({ color: '#f3f2ee', roughness: 0.4, metalness: 0.05, side: THREE.DoubleSide }),
+      upperBell: bellGeometry(spec.upperRadius * 0.5, spec.upperRadius * 0.9),
     }),
-    [spec.coreColor],
+    [spec.upperRadius],
   )
-
-  const geometries = useMemo(
-    () => ({
-      fairingPlus: fairingGeometry(spec, layout.boattail, 1),
-      fairingMinus: fairingGeometry(spec, layout.boattail, -1),
-      upperBell: bellGeometry(spec.upperRadius * 0.62, 2.2),
-    }),
-    [spec, layout.boattail],
-  )
-
-  const coreCenter = layout.coreBottom + spec.coreHeight / 2
-  const upperCenter = layout.upperBottom + spec.upperHeight / 2
-  const boosterBase = spec.boosters === 'solid' ? 1.2 : layout.coreBottom
-  const boosterCenter = boosterBase + spec.boosterHeight / 2
 
   useFrame(() => {
     const d = director
-    const sides = [-1, 1]
+    const p = d.boosterSep
 
-    // Boosters: drift outward, fall behind and tumble.
+    // Side boosters: drift outward, fall behind and tumble.
+    const sideParts = [parts.boosterL, parts.boosterR]
     boosters.current.forEach((group, i) => {
-      if (!group) {
+      const part = sideParts[i]
+      if (!group || !part) {
         return
       }
-      const side = sides[i]
-      const p = d.boosterSep
-      group.position.set(side * (spec.boosterOffset + p * L * 0.1 + p * p * L * 0.35), boosterCenter - p * p * L * 0.9, 0)
+      const side = i === 0 ? -1 : 1
+      group.position.set(part.rest.x + side * (p * L * 0.1 + p * p * L * 0.35), part.rest.y - p * p * L * 0.9, part.rest.z)
       group.rotation.set(p * 0.3, 0, -side * p * 0.9)
       group.visible = p < 0.995
     })
 
-    // First stage: falls behind and slowly turns over.
-    if (core.current) {
+    // A whole first stage (three-stage rocket): falls straight behind and slowly turns over.
+    if (stage1.current && parts.stage1) {
+      const rest = parts.stage1.rest
+      stage1.current.position.set(rest.x - p * L * 0.03, rest.y - (p * L * 0.05 + p * p * L * 1.1), rest.z)
+      stage1.current.rotation.set(p * 0.2, 0, -p * 0.4)
+      stage1.current.visible = p < 0.995
+    }
+
+    // Core stage: falls behind and slowly turns over.
+    if (core.current && parts.core) {
       const q = d.stageSep
-      core.current.position.set(q * L * 0.04, coreCenter - (q * L * 0.05 + q * q * L * 0.9), 0)
+      const rest = parts.core.rest
+      core.current.position.set(rest.x + q * L * 0.04, rest.y - (q * L * 0.05 + q * q * L * 0.9), rest.z)
       core.current.rotation.set(q * 0.25, 0, q * 0.45)
       core.current.visible = q < 0.995
     }
 
-    // Nose cone halves: open like a clam shell and drift away.
+    // Nose halves: open like a clam shell and drift away.
     fairings.current.forEach((pivot, i) => {
       if (!pivot) {
         return
       }
-      const side = i === 0 ? 1 : -1
+      const side = i === 0 ? -1 : 1
       const f = d.fairingSep
-      pivot.position.set(side * (spec.fairingRadius + f * L * 0.06 + f * f * L * 0.3), layout.upperTop - f * f * L * 0.35, 0)
+      pivot.position.set(side * (spec.fairingRadius + f * L * 0.06 + f * f * L * 0.3), spec.upperTop - f * f * L * 0.35, 0)
       pivot.rotation.z = -side * (Math.min(1, f * 1.8) * 0.8 + f * 0.6)
       pivot.visible = f < 0.995
     })
 
     // Upper stage: after the spacecraft is let go, it falls behind.
-    if (upper.current) {
+    if (upper.current && parts.upper) {
       const c = d.craftSep
-      upper.current.position.set(0, upperCenter - c * c * L * 0.3, 0)
+      upper.current.position.set(parts.upper.rest.x, parts.upper.rest.y - c * c * L * 0.3, parts.upper.rest.z)
       upper.current.rotation.z = -c * 0.35
     }
 
@@ -241,159 +174,152 @@ export function Rocket({ spec, design, orbitId, director, glowTexture, markers }
       // it ends up above and to the right of the Earth.
       const forward = c * 3 + u * u * 13900
       const curve = u * u * 3200
-      payload.current.position.set(curve, layout.payloadY + forward, 0)
+      payload.current.position.set(curve, spec.payloadY + forward, 0)
     }
   })
 
-  const clusterCore = bellCluster(spec, spec.coreRadius)
-  const bellLength = spec.bellLength
-
-  function bells(cluster: { x: number; z: number; r: number }[]) {
-    return cluster.map((bell, i) => (
-      <mesh key={i} position={[bell.x, 0, bell.z]} geometry={bellGeometry(bell.r, bellLength)} material={materials.metal} />
-    ))
-  }
-
-  // One full core: bells, body, black bands. Used for the centre core and for side cores.
-  function coreBody(withNose: boolean) {
-    const r = spec.coreRadius
+  // Flames of the engines that leave with the boosters or with the first stage.
+  function boosterFlame(engine: EngineSpec, rest: THREE.Vector3) {
     return (
-      <group position={[0, -spec.coreHeight / 2 - layout.coreBottom, 0]}>
-        <group position={[0, layout.coreBottom, 0]}>{bells(clusterCore)}</group>
-        <mesh position={[0, layout.coreBottom + spec.coreHeight / 2, 0]} material={materials.core}>
-          <cylinderGeometry args={[r, r, spec.coreHeight, 40]} />
-        </mesh>
-        <mesh position={[0, layout.coreBottom + 0.5, 0]} material={materials.dark}>
-          <cylinderGeometry args={[r * 1.01, r * 1.04, 1, 40]} />
-        </mesh>
-        <mesh position={[0, layout.coreBottom + spec.coreHeight * 0.62, 0]} material={materials.dark}>
-          <cylinderGeometry args={[r * 1.005, r * 1.005, 0.5, 40]} />
-        </mesh>
-        {withNose && (
-          <mesh position={[0, layout.coreBottom + spec.coreHeight + r * 1.2, 0]} material={materials.white}>
-            <coneGeometry args={[r, r * 2.4, 40]} />
-          </mesh>
-        )}
+      <group position={[engine.x - rest.x, engine.y - rest.y, -rest.z]}>
+        <Flame
+          radius={engine.radius}
+          length={engine.length}
+          intensity={() => (director.boosterSep > 0 ? 0 : director.engine)}
+          vacuum={() => (director.act === 2 ? 1 : 0)}
+          glowTexture={glowTexture}
+          color={engine.color}
+        />
       </group>
     )
   }
 
+  function coreIntensity(): number {
+    if (spec.coreStartsAfterBoosters && director.boosterSep < 0.06) {
+      return 0
+    }
+    return director.engine
+  }
+
+  const sideParts = [parts.boosterL, parts.boosterR]
+  const fairingParts = [parts.fairingL, parts.fairingR]
+
   return (
     <group>
-      {/* First stage (with the interstage ring on top) */}
-      <group ref={core}>
-        {coreBody(false)}
-        <mesh position={[0, spec.coreHeight / 2 + INTERSTAGE / 2, 0]} material={materials.dark}>
-          <cylinderGeometry args={[spec.upperRadius * 1.02, spec.coreRadius, INTERSTAGE, 40]} />
-        </mesh>
-        <object3D
-          position={[0, spec.coreHeight / 2 + INTERSTAGE, 0]}
-          ref={(o) => {
-            markers.interstage = o
-          }}
-        />
-        <group position={[0, -spec.coreHeight / 2 - layout.coreBottom + 0.1, 0]}>
-          <object3D
-            ref={(o) => {
-              markers.coreNozzle = o
-            }}
-          />
-          <Flame
-            radius={spec.coreRadius * 0.95}
-            length={spec.coreRadius * 16}
-            intensity={() => director.engine}
-            vacuum={() => (director.act === 2 ? 1 : 0)}
-            glowTexture={glowTexture}
-          />
-        </group>
-      </group>
+      {/* The place of the engines at lift-off: smoke trail and engine light start here */}
+      <object3D
+        position={[0, 0.2, 0]}
+        ref={(o) => {
+          markers.coreNozzle = o
+        }}
+      />
 
-      {/* Side boosters or side cores */}
-      {spec.boosters !== 'none' &&
-        [-1, 1].map((side, i) => (
+      {/* First stage of the three-stage rocket */}
+      {parts.stage1 && (
+        <group ref={stage1} position={parts.stage1.rest}>
+          <primitive object={parts.stage1.object} />
+          {spec.boosterEngines.map((engine, i) => (
+            <group key={i}>{boosterFlame(engine, parts.stage1!.rest)}</group>
+          ))}
+        </group>
+      )}
+
+      {/* Side boosters */}
+      {sideParts.map((part, i) => {
+        if (!part) {
+          return null
+        }
+        const engine = spec.boosterEngines[i]
+        return (
           <group
-            key={side}
+            key={i}
+            position={part.rest}
             ref={(g) => {
               boosters.current[i] = g
             }}
           >
-            {spec.boosters === 'cores' ? (
-              coreBody(true)
-            ) : (
-              <group>
-                <mesh material={materials.white}>
-                  <cylinderGeometry args={[spec.boosterRadius, spec.boosterRadius, spec.boosterHeight, 28]} />
-                </mesh>
-                <mesh position={[0, spec.boosterHeight / 2 + spec.boosterRadius * 1.3, 0]} material={materials.white}>
-                  <coneGeometry args={[spec.boosterRadius, spec.boosterRadius * 2.6, 28]} />
-                </mesh>
-                <mesh position={[0, -spec.boosterHeight / 2, 0]} geometry={bellGeometry(spec.boosterRadius * 0.75, 1.2)} material={materials.metal} />
-              </group>
-            )}
-            <group position={[0, -spec.boosterHeight / 2 - (spec.boosters === 'cores' ? layout.coreBottom : 1.1), 0]}>
+            <primitive object={part.object} />
+            {engine && boosterFlame(engine, part.rest)}
+          </group>
+        )
+      })}
+
+      {/* Core stage */}
+      {parts.core && (
+        <group ref={core} position={parts.core.rest}>
+          <primitive object={parts.core.object} />
+          <object3D
+            position={[-parts.core.rest.x, spec.upperBottom - parts.core.rest.y, -parts.core.rest.z]}
+            ref={(o) => {
+              markers.interstage = o
+            }}
+          />
+          {spec.coreEngines.map((engine, i) => (
+            <group key={i} position={[engine.x - parts.core!.rest.x, engine.y - parts.core!.rest.y, -parts.core!.rest.z]}>
               <Flame
-                radius={spec.boosterRadius * 0.9}
-                length={spec.boosterRadius * 15}
-                intensity={() => (director.boosterSep > 0 ? 0 : director.engine)}
+                radius={engine.radius}
+                length={engine.length}
+                intensity={coreIntensity}
                 vacuum={() => (director.act === 2 ? 1 : 0)}
                 glowTexture={glowTexture}
+                color={engine.color}
+              />
+            </group>
+          ))}
+        </group>
+      )}
+
+      {/* Upper stage, with its engine hidden inside the rocket until the core drops */}
+      {parts.upper && (
+        <group ref={upper} position={parts.upper.rest}>
+          <primitive object={parts.upper.object} />
+          <group position={[-parts.upper.rest.x, spec.upperBottom - parts.upper.rest.y + 0.3, -parts.upper.rest.z]}>
+            <mesh geometry={extras.upperBell} material={extras.metal} />
+            <group position={[0, -spec.upperRadius * 0.85, 0]}>
+              <Flame
+                radius={spec.upperRadius * 0.5}
+                length={spec.upperRadius * 6}
+                intensity={() => director.upperEngine}
+                vacuum={() => 1}
+                glowTexture={glowTexture}
+                color="blue"
               />
             </group>
           </group>
-        ))}
-
-      {/* Upper stage, with its own engine hidden inside the interstage until the first stage drops */}
-      <group ref={upper}>
-        <mesh material={materials.white}>
-          <cylinderGeometry args={[spec.upperRadius, spec.upperRadius, spec.upperHeight, 40]} />
-        </mesh>
-        <mesh position={[0, -spec.upperHeight / 2 + 0.3, 0]} material={materials.dark}>
-          <cylinderGeometry args={[spec.upperRadius * 1.01, spec.upperRadius * 1.01, 0.6, 40]} />
-        </mesh>
-        <group position={[0, -spec.upperHeight / 2, 0]}>
-          <mesh geometry={geometries.upperBell} material={materials.metal} />
-          <group position={[0, -2.1, 0]}>
-            <Flame
-              radius={spec.upperRadius * 0.6}
-              length={spec.upperRadius * 6}
-              intensity={() => director.upperEngine}
-              vacuum={() => 1}
-              glowTexture={glowTexture}
-              color="blue"
-            />
-          </group>
         </group>
-      </group>
+      )}
 
-      {/* The spacecraft inside the nose cone */}
+      {/* The spacecraft inside the nose */}
       <group
         ref={(g) => {
           payload.current = g
           markers.craft = g
         }}
-        position={[0, layout.payloadY, 0]}
+        position={[0, spec.payloadY, 0]}
       >
-        <group scale={layout.payloadScale}>
+        <group scale={spec.payloadScale}>
           <Spacecraft3D design={design} orbitId={orbitId} director={director} glowTexture={glowTexture} />
         </group>
       </group>
 
-      {/* Nose cone halves, each turning on a hinge at its base */}
-      {[1, -1].map((side, i) => (
-        <group
-          key={'fairing' + side}
-          ref={(g) => {
-            fairings.current[i] = g
-          }}
-          position={[side * spec.fairingRadius, layout.upperTop, 0]}
-        >
-          <mesh
-            position={[-side * spec.fairingRadius, 0, 0]}
-            geometry={side > 0 ? geometries.fairingPlus : geometries.fairingMinus}
-            material={materials.fairing}
-          />
-        </group>
-      ))}
+      {/* Nose halves, each turning on a hinge at its base */}
+      {fairingParts.map((part, i) => {
+        if (!part) {
+          return null
+        }
+        const side = i === 0 ? -1 : 1
+        return (
+          <group
+            key={'fairing' + i}
+            ref={(g) => {
+              fairings.current[i] = g
+            }}
+            position={[side * spec.fairingRadius, spec.upperTop, 0]}
+          >
+            <primitive object={part.object} position={[part.rest.x - side * spec.fairingRadius, part.rest.y - spec.upperTop, part.rest.z]} />
+          </group>
+        )
+      })}
     </group>
   )
 }

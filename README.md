@@ -33,4 +33,6 @@ npm run balance   # prints resources and score for test designs
 - Physics used in simplified form: sunlight falls with the square of the distance from the Sun (Mars ≈ 43%, Jupiter ≈ 3.7% of Earth's), Earth–Mars launch windows about every 26 months, Hohmann transfer geometry, signal delay at light speed.
 - All prices, masses and powers are **approximate game values** chosen for balance, not official figures.
 - Fonts: Inter and JetBrains Mono (SIL Open Font License), bundled locally.
+- 3D rockets in the launch film: NASA 3D Resources (github.com/nasa/NASA-3D-Resources): Space Launch System Block 1, Saturn V and Explorer Jupiter-C. They were simplified and cut into stages with Blender (`scripts/models/`). The SLS source file has no tank or booster casings, so those plain cylinders were added by the script. Files: `public/models/*.glb`, 1.1 MB in total.
+- Draco mesh decoder (`public/draco/`): from three.js, Apache License 2.0.
 - No NASA logo is used.

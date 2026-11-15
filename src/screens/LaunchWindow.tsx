@@ -7,7 +7,7 @@ import { StatusLights } from '../components/StatusLights'
 import { num, texts } from '../logic/data'
 import { WINDOW_MONTHS, formatTrip, isGoodWindow, monthLabel, transferMonths, windowFactor } from '../logic/resources'
 import { useMission, useMissionReport } from '../store/useMission'
-import { loadLaunchScene, loadMissionScene } from '../three/preload'
+import { loadLaunchScene, loadMissionScene, warmRocketModel } from '../three/preload'
 
 const YEARS = [2027, 2028, 2029]
 
@@ -23,6 +23,11 @@ export function LaunchWindow() {
   useEffect(() => {
     void loadLaunchScene()
     void loadMissionScene()
+    if (data) {
+      warmRocketModel(data.ctx.launchVehicle.id)
+    }
+    // Once, when the screen opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Start the slider away from the best window, so the player has to find it.

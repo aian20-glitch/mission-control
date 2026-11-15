@@ -3,7 +3,7 @@ import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import type { LaunchDirector } from './director'
-import { rocketLayout, type RocketSpec } from './Rocket'
+import type { RocketSpec } from './rocketSpecs'
 
 export const PAD_TOP = 3
 
@@ -55,6 +55,40 @@ function towerGeometry(height: number, width: number): THREE.BufferGeometry {
   return merged ?? new THREE.BoxGeometry(1, 1, 1)
 }
 
+// A floodlight beam in the night air: brightest at the lamp, fading along its length,
+// soft at the edges (where we look along the surface of the cone, not through it).
+function createBeamMaterial(): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    vertexShader: /* glsl */ `
+      varying float vAlong;
+      varying vec3 vNormal;
+      varying vec3 vView;
+      void main() {
+        vAlong = uv.y;
+        vec4 world = modelMatrix * vec4(position, 1.0);
+        vNormal = normalize(mat3(modelMatrix) * normal);
+        vView = normalize(cameraPosition - world.xyz);
+        gl_Position = projectionMatrix * viewMatrix * world;
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      varying float vAlong;
+      varying vec3 vNormal;
+      varying vec3 vView;
+      void main() {
+        float through = pow(abs(dot(normalize(vNormal), normalize(vView))), 2.0);
+        float along = clamp(vAlong, 0.0, 1.0);
+        float fade = pow(along, 1.6) * smoothstep(0.0, 0.12, 1.0 - along);
+        gl_FragColor = vec4(vec3(0.6, 0.72, 1.0), through * fade * 0.11);
+      }
+    `,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide,
+  })
+}
+
 // Repeatable "random" numbers for placing clouds.
 function seeded(i: number): number {
   const x = Math.sin(i * 91.3458) * 47453.5453
@@ -63,9 +97,8 @@ function seeded(i: number): number {
 
 // Act 1: the ground, the launch mount, the service tower and a layer of clouds high above.
 export function PadSet({ spec, director, puffTexture }: PadSetProps) {
-  const layout = rocketLayout(spec)
-  const L = layout.length
-  const outerRadius = spec.boosters === 'none' ? spec.coreRadius : spec.boosterOffset + spec.boosterRadius
+  const L = spec.length
+  const outerRadius = spec.outerRadius
   const towerWidth = 5
   const towerX = -(outerRadius + 4 + towerWidth / 2)
   const towerHeight = L + PAD_TOP + 8
@@ -83,12 +116,15 @@ export function PadSet({ spec, director, puffTexture }: PadSetProps) {
     }
     return {
       tower: towerGeometry(towerHeight, towerWidth),
-      ground: new THREE.MeshStandardMaterial({ color: '#3a4231', roughness: 1, metalness: 0 }),
+      ground: new THREE.MeshStandardMaterial({ color: '#23271f', roughness: 1, metalness: 0 }),
+      beam: createBeamMaterial(),
+      aimPoint: new THREE.Object3D(),
+      lamp: new THREE.MeshBasicMaterial({ color: new THREE.Color(6, 7, 9), fog: false }),
       concrete: new THREE.MeshStandardMaterial({ color: '#8d8b85', roughness: 0.95, metalness: 0 }),
       steel: new THREE.MeshStandardMaterial({ color: '#5d6168', roughness: 0.6, metalness: 0.5 }),
       dark: new THREE.MeshStandardMaterial({ color: '#202327', roughness: 0.9, metalness: 0.1 }),
       building: new THREE.MeshStandardMaterial({ color: '#6c7077', roughness: 0.9, metalness: 0 }),
-      cloud: new THREE.SpriteMaterial({ map: puffTexture, color: new THREE.Color(1.15, 1.12, 1.1), transparent: true, opacity: 0.85, depthWrite: false }),
+      cloud: new THREE.SpriteMaterial({ map: puffTexture, color: new THREE.Color(0.2, 0.24, 0.36), transparent: true, opacity: 0.8, depthWrite: false }),
       clouds,
     }
   }, [L, towerHeight])
@@ -105,12 +141,46 @@ export function PadSet({ spec, director, puffTexture }: PadSetProps) {
   // Arms reach the upper stage and the nose cone: high enough to pass over any side boosters.
   const towerFace = -towerX - towerWidth / 2
   const armList = [
-    { height: PAD_TOP + layout.upperTop - 1.2, length: towerFace - spec.upperRadius + 0.3 },
-    { height: PAD_TOP + layout.upperTop + layout.boattail + spec.fairingCylinder * 0.5, length: towerFace - spec.fairingRadius + 0.3 },
+    { height: PAD_TOP + spec.upperTop - 1.2, length: towerFace - spec.upperRadius + 0.3 },
+    { height: PAD_TOP + spec.upperTop + spec.fairingHeight * 0.2, length: towerFace - spec.fairingRadius + 0.3 },
   ]
+
+  // Xenon floodlights around the pad, all aimed at the rocket.
+  const aim = PAD_TOP + L * 0.55
+  const floodlights = [0.5, 2.1, 3.9, 5.4].map((angle) => {
+    const distance = L * 1.15
+    const position = new THREE.Vector3(Math.cos(angle) * distance, 5, Math.sin(angle) * distance)
+    const toRocket = new THREE.Vector3(0, aim, 0).sub(position)
+    const beamLength = toRocket.length() * 1.7
+    // The beam is a long thin cone with its tip at the lamp.
+    const quaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, -1, 0), toRocket.clone().normalize())
+    const middle = position.clone().addScaledVector(toRocket.clone().normalize(), beamLength / 2)
+    return { position, quaternion, middle, beamLength }
+  })
 
   return (
     <group>
+      <primitive object={parts.aimPoint} position={[0, aim, 0]} />
+      {floodlights.map((light, i) => (
+        <group key={'flood' + i}>
+          <spotLight
+            position={light.position}
+            target={parts.aimPoint}
+            intensity={2.6 * L * L}
+            angle={0.34}
+            penumbra={0.7}
+            decay={2}
+            color="#dfe8ff"
+          />
+          <mesh position={light.position} material={parts.lamp}>
+            <sphereGeometry args={[0.9, 12, 8]} />
+          </mesh>
+          <mesh position={light.middle} quaternion={light.quaternion} material={parts.beam}>
+            <coneGeometry args={[light.beamLength * 0.07, light.beamLength, 24, 1, true]} />
+          </mesh>
+        </group>
+      ))}
+
       <mesh rotation={[-Math.PI / 2, 0, 0]} material={parts.ground}>
         <circleGeometry args={[40000, 64]} />
       </mesh>

@@ -3,11 +3,11 @@ import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import type { LaunchDirector } from './director'
 
-// Morning Sun, low over the horizon behind the pad.
-export const DAWN_SUN = new THREE.Vector3(-0.62, 0.08, -0.78).normalize()
+// The launch is at night, just before dawn: the Sun is still under the horizon behind the pad.
+export const DAWN_SUN = new THREE.Vector3(-0.62, -0.05, -0.78).normalize()
 
 // Sky colours the fog fades into, near the ground and high up.
-export const HORIZON_COLOR = new THREE.Color(1.05, 0.66, 0.46)
+export const HORIZON_COLOR = new THREE.Color(0.075, 0.07, 0.1)
 export const SPACE_HORIZON_COLOR = new THREE.Color(0.02, 0.04, 0.1)
 
 const SKY_VERTEX = /* glsl */ `
@@ -27,16 +27,17 @@ const SKY_FRAGMENT = /* glsl */ `
   void main() {
     vec3 d = normalize(vDirection);
     float h = d.y;
-    // Morning sky: warm at the horizon, blue overhead.
-    vec3 horizon = vec3(1.05, 0.66, 0.46);
-    vec3 low = vec3(0.55, 0.6, 0.85);
-    vec3 zenith = vec3(0.07, 0.17, 0.45);
+    // Night sky just before dawn: deep blue overhead, a band of orange where the Sun will rise.
+    vec3 horizon = vec3(0.075, 0.07, 0.1);
+    vec3 low = vec3(0.03, 0.05, 0.13);
+    vec3 zenith = vec3(0.004, 0.008, 0.028);
     vec3 color = mix(horizon, low, smoothstep(0.0, 0.14, h));
-    color = mix(color, zenith, smoothstep(0.12, 0.65, h));
-    color = mix(color, vec3(0.32, 0.27, 0.25), smoothstep(0.0, -0.15, h));
+    color = mix(color, zenith, smoothstep(0.1, 0.6, h));
+    color = mix(color, vec3(0.02, 0.02, 0.025), smoothstep(0.0, -0.15, h));
     float sun = max(dot(d, uSun), 0.0);
-    color += vec3(1.0, 0.55, 0.25) * pow(sun, 6.0) * 0.7;
-    color += vec3(30.0, 22.0, 14.0) * pow(sun, 900.0);
+    float nearHorizon = smoothstep(0.32, 0.0, abs(h));
+    color += vec3(1.0, 0.42, 0.14) * pow(sun, 5.0) * nearHorizon * 0.55;
+    color += vec3(1.0, 0.7, 0.4) * pow(sun, 40.0) * nearHorizon * 0.5;
 
     // Higher up the air thins out and the sky turns black, with a thin blue line at the horizon.
     vec3 space = mix(vec3(0.0, 0.0, 0.008), vec3(0.06, 0.12, 0.32), smoothstep(0.25, -0.05, h) * 0.8);
@@ -120,7 +121,8 @@ export function Stars({ director }: { director: LaunchDirector }) {
   useFrame(() => {
     // Fade in as the sky darkens; fade out while the film shrinks into the mission screen
     // (the shrinking picture would squeeze the stars into a dense crowd).
-    const inSky = director.act === 2 ? 1 : Math.max(0, (director.sky - 0.25) / 0.75)
+    // At night a few stars already show from the pad; in space they are all out.
+    const inSky = director.act === 2 ? 1 : 0.45 + 0.55 * director.sky
     const visible = inSky * Math.max(0, 1 - director.morph * 2.5)
     material.opacity = visible
     if (group.current) {

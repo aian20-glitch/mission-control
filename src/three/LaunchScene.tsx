@@ -8,7 +8,8 @@ import type { Design, OrbitId } from '../logic/types'
 import { smoothStep, type LaunchDirector } from './launch/director'
 import { PAD_TOP, PadSet } from './launch/PadSet'
 import { ParticlePool, type SpawnOptions } from './launch/particles'
-import { Rocket, rocketLayout, rocketSpec, type RocketMarkers, type RocketSpec } from './launch/Rocket'
+import { Rocket, type RocketMarkers } from './launch/Rocket'
+import { rocketSpec, type RocketSpec } from './launch/rocketSpecs'
 import { DAWN_SUN, HORIZON_COLOR, SPACE_HORIZON_COLOR, SkyDome, Stars } from './launch/Sky'
 import { EARTH_CENTER, EARTH_RADIUS, SpaceSet } from './launch/SpaceSet'
 import { createGlowTexture, createPuffTexture } from './launch/textures'
@@ -140,14 +141,13 @@ function separationPuff(point: THREE.Vector3, axis: THREE.Vector3, scale: number
 
 function SceneContent({ director, launchVehicleId, design, orbitId, onReady }: LaunchSceneProps) {
   const spec = useMemo(() => rocketSpec(launchVehicleId), [launchVehicleId])
-  const layout = rocketLayout(spec)
-  const L = layout.length
+  const L = spec.length
   const camera = useThree((state) => state.camera) as THREE.PerspectiveCamera
   const scene = useThree((state) => state.scene)
   const size = useThree((state) => state.size)
 
   const textures = useMemo(() => ({ puff: createPuffTexture(), glow: createGlowTexture() }), [])
-  const smoke = useMemo(() => new ParticlePool(1300, textures.puff, false), [textures])
+  const smoke = useMemo(() => new ParticlePool(2400, textures.puff, false), [textures])
   const puffs = useMemo(() => new ParticlePool(220, textures.puff, false), [textures])
   const fog = useMemo(() => new THREE.FogExp2(HORIZON_COLOR.clone(), 0.001), [])
   const markers = useMemo<RocketMarkers>(() => ({ coreNozzle: null, interstage: null, craft: null }), [])
@@ -229,6 +229,8 @@ function SceneContent({ director, launchVehicleId, design, orbitId, onReady }: L
     if (act2.current) {
       act2.current.visible = d.act === 2
     }
+    // Reflections of the studio lights: faint on the dark pad, full in sunlit space.
+    scene.environmentIntensity = d.act === 1 ? 0.22 + d.sky * 0.5 : 1
 
     // ---- Where the rocket is ----
     if (d.act === 1) {
@@ -247,14 +249,14 @@ function SceneContent({ director, launchVehicleId, design, orbitId, onReady }: L
       while (emitDebt.current.vapour >= 1) {
         emitDebt.current.vapour = emitDebt.current.vapour - 1
         const angle = Math.random() * Math.PI * 2
-        const height = layout.coreBottom + spec.coreHeight * randomBetween(0.3, 0.92)
+        const height = spec.coreBottom + spec.coreHeight * randomBetween(0.3, 0.92)
         v.a.set(Math.cos(angle) * spec.coreRadius, height, Math.sin(angle) * spec.coreRadius)
         root.localToWorld(v.a)
         v.b.set(Math.cos(angle), 0, Math.sin(angle))
         smoke.spawn(vapourPuff(spec, v.a, v.b))
       }
 
-      emitDebt.current.ground = emitDebt.current.ground + dt * 95 * d.groundSmoke
+      emitDebt.current.ground = emitDebt.current.ground + dt * 170 * d.groundSmoke
       while (emitDebt.current.ground >= 1) {
         emitDebt.current.ground = emitDebt.current.ground - 1
         smoke.spawn(groundPuff(L))
@@ -279,17 +281,30 @@ function SceneContent({ director, launchVehicleId, design, orbitId, onReady }: L
           lastNozzle.current = v.a.clone()
         }
       }
-      smoke.material.uniforms.uLight.value = 1 - d.sky * 0.45
+      // At night the smoke is dark, except where the flame lights it. High up, the first sunlight reaches it.
+      smoke.material.uniforms.uLight.value = 0.16 + d.sky * 0.5
+      smoke.material.uniforms.uGlow.value = d.engine
+      smoke.material.uniforms.uGlowRange.value = L * 0.5
+      if (markers.coreNozzle) {
+        markers.coreNozzle.getWorldPosition(smoke.material.uniforms.uGlowPosition.value)
+      }
     } else {
       // Puffs when parts let go of each other.
       const before = previous.current
-      if (before.boosterSep === 0 && d.boosterSep > 0 && spec.boosters !== 'none') {
+      if (before.boosterSep === 0 && d.boosterSep > 0 && spec.boosters === 'side') {
         for (const side of [-1, 1]) {
           for (let i = 0; i < 18; i++) {
-            v.a.set(side * (spec.boosterOffset - spec.boosterRadius), layout.coreBottom + spec.coreHeight * randomBetween(0.2, 0.7), 0)
+            v.a.set(side * (spec.boosterOffset - spec.boosterRadius), spec.boosterTop * randomBetween(0.2, 0.9), 0)
             root.localToWorld(v.a)
             puffs.spawn(separationPuff(v.a, v.axis, L / 50))
           }
+        }
+      }
+      if (before.boosterSep === 0 && d.boosterSep > 0 && spec.boosters === 'stage') {
+        for (let i = 0; i < 40; i++) {
+          v.a.set(0, spec.boosterTop, 0)
+          root.localToWorld(v.a)
+          puffs.spawn(separationPuff(v.a, v.axis, L / 50))
         }
       }
       if (before.stageSep === 0 && d.stageSep > 0 && markers.interstage) {
@@ -300,7 +315,7 @@ function SceneContent({ director, launchVehicleId, design, orbitId, onReady }: L
       }
       if (before.fairingSep === 0 && d.fairingSep > 0) {
         for (let i = 0; i < 30; i++) {
-          v.a.set(0, layout.upperTop + randomBetween(0, spec.fairingCylinder + spec.fairingNose), 0)
+          v.a.set(0, spec.upperTop + randomBetween(0, spec.fairingHeight), 0)
           root.localToWorld(v.a)
           puffs.spawn(separationPuff(v.a, v.axis, L / 70))
         }
@@ -320,7 +335,7 @@ function SceneContent({ director, launchVehicleId, design, orbitId, onReady }: L
     if (engineLight.current && markers.coreNozzle) {
       markers.coreNozzle.getWorldPosition(engineLight.current.position)
       engineLight.current.position.y = engineLight.current.position.y - L * 0.05
-      engineLight.current.intensity = d.act === 1 ? d.engine * 2.2 * L * L : 0
+      engineLight.current.intensity = d.act === 1 ? d.engine * (3.2 + Math.sin(time * 43) * 0.35) * L * L : 0
     }
 
     // ---- Camera ----
@@ -346,9 +361,9 @@ function SceneContent({ director, launchVehicleId, design, orbitId, onReady }: L
       fog.density = 0
 
       // What the camera looks at: the whole rocket, then the upper stage, then the spacecraft.
-      const upperCenter = layout.upperBottom + spec.upperHeight * 0.75
+      const upperCenter = spec.upperBottom + (spec.upperTop - spec.upperBottom) * 0.75
       let focusHeight = lerp(L * 0.5, upperCenter, smooth(d.stageSep))
-      focusHeight = lerp(focusHeight, layout.payloadY, smooth(d.fairingSep))
+      focusHeight = lerp(focusHeight, spec.payloadY, smooth(d.fairingSep))
       v.focus.set(0, focusHeight, 0)
       root.localToWorld(v.focus)
       if (markers.craft) {
@@ -437,9 +452,9 @@ function SceneContent({ director, launchVehicleId, design, orbitId, onReady }: L
 
       <group ref={act1}>
         <SkyDome director={director} />
-        <hemisphereLight args={['#a9b9dd', '#3b3027', 0.9]} />
-        <directionalLight position={[60, 55, 90]} intensity={2.1} color="#fff0de" />
-        <directionalLight position={DAWN_SUN.clone().multiplyScalar(100)} intensity={1.4} color="#ffb27a" />
+        <hemisphereLight args={['#33456e', '#120f0d', 0.5]} />
+        <directionalLight position={[60, 55, 90]} intensity={0.35} color="#9db4ff" />
+        <directionalLight position={[DAWN_SUN.x * 100, 12, DAWN_SUN.z * 100]} intensity={0.9} color="#ff9a5a" />
         <pointLight ref={engineLight} color="#ff9a45" distance={0} decay={2} intensity={0} />
         <PadSet spec={spec} director={director} puffTexture={textures.puff} />
         <primitive object={smoke.mesh} />
