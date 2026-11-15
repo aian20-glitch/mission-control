@@ -179,7 +179,7 @@ function FlightChart({ progress, glideMs, phase, destinationName, delay, color }
       <text x="868" y="44" textAnchor="end" className="chart-text chart-text-accent">
         {fill(t.chartPhase, { phase: texts.phases[phase] }).toUpperCase()}
       </text>
-      <text x="32" y="370" className="chart-text">
+      <text x="32" y="70" className="chart-text">
         {fill(t.chartWay, { n: percent }).toUpperCase()}
       </text>
       {showSignal && (
@@ -192,7 +192,7 @@ function FlightChart({ progress, glideMs, phase, destinationName, delay, color }
       <circle cx={PATH.x0} cy={PATH.y0} r="38" className="chart-ring" />
       <circle cx={PATH.x0 + 38} cy={PATH.y0} r="3" fill="#b9bdc4" />
       <circle cx={PATH.x0} cy={PATH.y0} r="15" fill="#4f9be8" className="trajectory-earth" />
-      <text x={PATH.x0 + 56} y={PATH.y0 + 6} className="chart-text">
+      <text x={PATH.x0} y={PATH.y0 + 64} textAnchor="middle" className="chart-text">
         {texts.ui.window.earth.toUpperCase()}
       </text>
 
