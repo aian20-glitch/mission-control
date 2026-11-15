@@ -4,3 +4,5 @@ dist
 *.local
 graphify-out
 .claude/settings.local.json
+audio/candidates/
+audio/board/
