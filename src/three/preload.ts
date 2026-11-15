@@ -10,9 +10,10 @@ export function loadStageScene() {
   return import('./StageScene')
 }
 
-export function loadMissionScene() {
-  return import('./MissionScene')
+export function loadCraftScene() {
+  return import('./CraftScene')
 }
+
 
 // Ask the browser for the rocket model ahead of time, so it is already in its cache when the film starts.
 export function warmRocketModel(launchVehicleId: string) {

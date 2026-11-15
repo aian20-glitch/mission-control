@@ -270,6 +270,7 @@
       "next": "Build the Spacecraft"
     },
     "assembly": {
+      "dragHint": "Drag to turn",
       "heading": "Build the Spacecraft",
       "notes": "Flight notes",
       "allGood": "All systems nominal. Ready for the launch window.",
@@ -366,6 +367,22 @@
       "track": "Launch events"
     },
     "mission": {
+      "alert": "ALERT",
+      "tagOk": "OK",
+      "tagActive": "ACTIVE",
+      "tagResolved": "RESOLVED",
+      "tagDegraded": "DEGRADED",
+      "tagLost": "SIGNAL LOST",
+      "tagOnline": "ONLINE",
+      "bootSign": "SYSTEM",
+      "bootTime": "BOOT",
+      "boot1": "Initializing mission link…",
+      "boot2": "Deep Space Network: link established.",
+      "boot3": "Telemetry stream is live.",
+      "chartTitle": "Flight path // Earth → {name}",
+      "chartPhase": "Phase: {phase}",
+      "chartWay": "Way done: {n}%",
+      "chartCraft": "SC-01",
       "heading": "{name} Mission in Progress",
       "speed": "Speed ×{n}",
       "day": "DAY {n}",

@@ -1,7 +1,6 @@
-import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { HudButton } from '../components/HudButton'
 import { MissionLog, type LogLine, type LogTone } from '../components/MissionLog'
-import { SceneBoundary } from '../components/SceneBoundary'
 import { ScreenHeader, stepLabel } from '../components/ScreenHeader'
 import { useSmoothValue } from '../components/useSmoothValue'
 import { texts, fill } from '../logic/data'
@@ -10,9 +9,6 @@ import { formatLifetime, transferMonths, bestWindowMonth } from '../logic/resour
 import { evaluateMission } from '../logic/scoring'
 import type { MissionEvent, MissionPhase, Outcome, PlanStep, Quality } from '../logic/types'
 import { useMission, useMissionReport } from '../store/useMission'
-import { loadMissionScene } from '../three/preload'
-
-const MissionScene = lazy(loadMissionScene)
 
 const STEP_MS = 1500
 const DECISION_SECONDS = 15
@@ -135,15 +131,20 @@ function DecisionModal({
   )
 }
 
-// Point on the cubic curve M60,150 C200,20 420,20 560,110 at parameter t (0..1).
-function bezierPoint(t: number): { x: number; y: number } {
+// The flight path on the chart: a curve from the Earth (bottom left) to the target (top right).
+const PATH = { x0: 110, y0: 300, x1: 300, y1: 60, x2: 600, y2: 40, x3: 780, y3: 130 }
+const PATH_D = 'M110,300 C300,60 600,40 780,130'
+const PATH_BACK_D = 'M780,130 C600,210 300,330 110,300'
+
+// Point on that curve at parameter t (0..1).
+function pathPoint(t: number): { x: number; y: number } {
   const u = 1 - t
-  const x = u * u * u * 60 + 3 * u * u * t * 200 + 3 * u * t * t * 420 + t * t * t * 560
-  const y = u * u * u * 150 + 3 * u * u * t * 20 + 3 * u * t * t * 20 + t * t * t * 110
+  const x = u * u * u * PATH.x0 + 3 * u * u * t * PATH.x1 + 3 * u * t * t * PATH.x2 + t * t * t * PATH.x3
+  const y = u * u * u * PATH.y0 + 3 * u * u * t * PATH.y1 + 3 * u * t * t * PATH.y2 + t * t * t * PATH.y3
   return { x, y }
 }
 
-interface TrajectoryProps {
+interface FlightChartProps {
   progress: number
   glideMs: number
   phase: MissionPhase
@@ -152,36 +153,85 @@ interface TrajectoryProps {
   color: string
 }
 
+// The flight chart: a flat drawing in thin lines, like a tracking screen in mission control.
 // The spacecraft glides along the path; each log step moves it a little further.
-function Trajectory({ progress, glideMs, phase, destinationName, delay, color }: TrajectoryProps) {
-  const path = 'M60,150 C200,20 420,20 560,110'
+function FlightChart({ progress, glideMs, phase, destinationName, delay, color }: FlightChartProps) {
+  const t = texts.ui.mission
   const showSignal = phase === 'operations'
   const shown = useSmoothValue(progress, glideMs)
-  const craft = bezierPoint(shown)
+  const craft = pathPoint(shown)
+  const percent = Math.round(shown * 100)
+  const marks = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
   return (
-    <svg className="trajectory" viewBox="0 0 620 200" role="img" aria-label={fill(texts.ui.mission.path, { name: destinationName })}>
-      <path d={path} fill="none" stroke="rgba(255,255,255,0.14)" strokeDasharray="3 6" />
-      <path d={path} fill="none" stroke="#5dcaa5" strokeWidth="1.6" pathLength={1} strokeDasharray="1" strokeDashoffset={1 - shown} />
-      <circle cx="60" cy="150" r="12" fill="#4f9be8" className="trajectory-earth" />
-      <text x="60" y="185" textAnchor="middle" className="map-label">
-        {texts.ui.window.earth}
+    <svg className="trajectory chart" viewBox="0 0 900 400" role="img" aria-label={fill(t.path, { name: destinationName })}>
+      <defs>
+        <pattern id="chart-grid" width="45" height="45" patternUnits="userSpaceOnUse">
+          <path d="M45,0 L0,0 L0,45" fill="none" stroke="rgba(255,255,255,0.045)" strokeWidth="1" />
+        </pattern>
+      </defs>
+      <rect width="900" height="400" fill="url(#chart-grid)" />
+
+      {/* Corner brackets and the chart's own captions */}
+      <path d="M14,34 L14,14 L34,14 M866,14 L886,14 L886,34 M886,366 L886,386 L866,386 M34,386 L14,386 L14,366" className="chart-bracket" />
+      <text x="32" y="44" className="chart-text">
+        {fill(t.chartTitle, { name: destinationName }).toUpperCase()}
       </text>
-      <circle cx="560" cy="110" r="14" fill={color} className={shown > 0.97 ? 'trajectory-target is-reached' : 'trajectory-target'} />
-      <text x="560" y="150" textAnchor="middle" className="map-label">
-        {destinationName}
+      <text x="868" y="44" textAnchor="end" className="chart-text chart-text-accent">
+        {fill(t.chartPhase, { phase: texts.phases[phase] }).toUpperCase()}
       </text>
-      <circle cx={craft.x} cy={craft.y} r="11" className="trajectory-halo" />
-      <circle cx={craft.x} cy={craft.y} r="5" fill="#ffffff" className="trajectory-craft" />
+      <text x="32" y="370" className="chart-text">
+        {fill(t.chartWay, { n: percent }).toUpperCase()}
+      </text>
+      {showSignal && (
+        <text x="868" y="370" textAnchor="end" className="chart-text chart-text-accent">
+          {fill(t.signal, { delay }).toUpperCase()}
+        </text>
+      )}
+
+      {/* The Earth with the Moon's orbit around it */}
+      <circle cx={PATH.x0} cy={PATH.y0} r="38" className="chart-ring" />
+      <circle cx={PATH.x0 + 38} cy={PATH.y0} r="3" fill="#b9bdc4" />
+      <circle cx={PATH.x0} cy={PATH.y0} r="15" fill="#4f9be8" className="trajectory-earth" />
+      <text x={PATH.x0 + 56} y={PATH.y0 + 6} className="chart-text">
+        {texts.ui.window.earth.toUpperCase()}
+      </text>
+
+      {/* The target */}
+      <circle cx={PATH.x3} cy={PATH.y3} r="34" className="chart-ring" />
+      <circle cx={PATH.x3} cy={PATH.y3} r="19" fill={color} className={shown > 0.97 ? 'trajectory-target is-reached' : 'trajectory-target'} />
+      <text x={PATH.x3} y={PATH.y3 + 64} textAnchor="middle" className="chart-text">
+        {destinationName.toUpperCase()}
+      </text>
+
+      {/* The path: all of it dashed, the part already flown in solid teal, a mark every tenth of the way */}
+      <path d={PATH_D} fill="none" stroke="rgba(255,255,255,0.18)" strokeDasharray="2 7" />
+      <path d={PATH_D} fill="none" stroke="#5dcaa5" strokeWidth="1.6" pathLength={1} strokeDasharray="1" strokeDashoffset={1 - shown} />
+      {marks.map((mark) => {
+        const point = pathPoint(mark)
+        return <circle key={mark} cx={point.x} cy={point.y} r="2.2" className={mark <= shown ? 'chart-mark is-passed' : 'chart-mark'} />
+      })}
+
+      {/* The spacecraft inside a round sight */}
+      <g transform={'translate(' + craft.x + ' ' + craft.y + ')'}>
+        <circle r="15" className="trajectory-halo" />
+        <circle r="13" className="chart-sight" />
+        <path d="M-21,0 L-13,0 M13,0 L21,0 M0,-21 L0,-13 M0,13 L0,21" className="chart-sight" />
+        <circle r="4" fill="#ffffff" className="trajectory-craft" />
+        <text x="28" y="-8" className="chart-text chart-text-strong">
+          {t.chartCraft}
+        </text>
+        <text x="28" y="14" className="chart-text chart-text-accent">
+          {percent}%
+        </text>
+      </g>
+
       {showSignal && (
         <g className="trajectory-signal">
           {[0, 1, 2].map((i) => (
             <circle key={i} r="3" fill="#5dcaa5">
-              <animateMotion dur="3s" begin={i + 's'} repeatCount="indefinite" path="M560,110 C420,170 200,190 60,150" />
+              <animateMotion dur="3s" begin={i + 's'} repeatCount="indefinite" path={PATH_BACK_D} />
             </circle>
           ))}
-          <text x="310" y="196" textAnchor="middle" className="map-label">
-            {fill(texts.ui.mission.signal, { delay })}
-          </text>
         </g>
       )}
     </svg>
@@ -215,7 +265,6 @@ function LiveStats({ power, delivered, science }: { power: string; delivered: nu
 
 export function Mission() {
   const data = useMissionReport()
-  const design = useMission((s) => s.design)
   const launchMonth = useMission((s) => s.launchMonth)
   const resolved = useMission((s) => s.resolved)
   const recordEvent = useMission((s) => s.recordEvent)
@@ -223,7 +272,11 @@ export function Mission() {
   const sandbox = useMission((s) => s.sandbox)
 
   const [index, setIndex] = useState(0)
-  const [lines, setLines] = useState<LogLine[]>([])
+  // The feed starts with three system lines, like a terminal waking up.
+  const [lines, setLines] = useState<LogLine[]>(() => {
+    const m = texts.ui.mission
+    return [m.boot1, m.boot2, m.boot3].map((text, i) => ({ id: -3 + i, time: m.bootTime, callsign: m.bootSign, text, tone: 'boot' as LogTone }))
+  })
   const [pending, setPending] = useState<MissionEvent | null>(null)
   const [lost, setLost] = useState(false)
   const [done, setDone] = useState(false)
@@ -337,10 +390,6 @@ export function Mission() {
   const live = evaluateMission(ctx, report, resolved)
   const timed = ctx.destination.difficulty !== 'Tutorial' && !sandbox
   const t = texts.ui.mission
-  const flatMap = (
-    <Trajectory progress={progress} glideMs={glideMs} phase={currentPhase} destinationName={ctx.destination.name} delay={ctx.destination.signalDelay} color={ctx.destination.map.color} />
-  )
-
   return (
     <section className="screen">
       <ScreenHeader
@@ -367,21 +416,7 @@ export function Mission() {
           </div>
 
           <div className="panel trajectory-panel">
-            {/* 3D map with the real spacecraft model; the flat 2D map while it loads or without WebGL. */}
-            <SceneBoundary fallback={flatMap}>
-              <Suspense fallback={flatMap}>
-                <MissionScene
-                  destinationId={ctx.destination.id}
-                  destinationName={ctx.destination.name}
-                  progress={progress}
-                  glideMs={glideMs}
-                  phase={currentPhase}
-                  design={design}
-                  orbitId={ctx.orbit.id}
-                />
-              </Suspense>
-            </SceneBoundary>
-            {currentPhase === 'operations' && <p className="trajectory-note mono">{fill(t.signal, { delay: ctx.destination.signalDelay })}</p>}
+            <FlightChart progress={progress} glideMs={glideMs} phase={currentPhase} destinationName={ctx.destination.name} delay={ctx.destination.signalDelay} color={ctx.destination.map.color} />
           </div>
 
           <LiveStats power={report.powerNeeded + '/' + report.powerAvailable} delivered={live.deliveredShare * 100} science={live.science} />

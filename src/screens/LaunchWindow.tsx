@@ -7,7 +7,7 @@ import { StatusLights } from '../components/StatusLights'
 import { num, texts } from '../logic/data'
 import { WINDOW_MONTHS, formatTrip, isGoodWindow, monthLabel, transferMonths, windowFactor } from '../logic/resources'
 import { useMission, useMissionReport } from '../store/useMission'
-import { loadLaunchScene, loadMissionScene, warmRocketModel } from '../three/preload'
+import { loadLaunchScene, warmRocketModel } from '../three/preload'
 
 const YEARS = [2027, 2028, 2029]
 
@@ -19,10 +19,9 @@ export function LaunchWindow() {
 
   const destination = data ? data.ctx.destination : null
 
-  // Download the 3D launch film and mission scene in the background while the player picks a date.
+  // Download the 3D launch film in the background while the player picks a date.
   useEffect(() => {
     void loadLaunchScene()
-    void loadMissionScene()
     if (data) {
       warmRocketModel(data.ctx.launchVehicle.id)
     }

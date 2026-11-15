@@ -1,7 +1,8 @@
-import { useRef, useState } from 'react'
+import { Suspense, lazy, useRef, useState } from 'react'
 import { HudButton } from '../components/HudButton'
 import { PartCard } from '../components/PartCard'
 import { ResourcePanel } from '../components/ResourceBar'
+import { SceneBoundary } from '../components/SceneBoundary'
 import { ScreenHeader, stepLabel } from '../components/ScreenHeader'
 import { SpacecraftSchematic } from '../components/SpacecraftSchematic'
 import { StatusLights } from '../components/StatusLights'
@@ -9,6 +10,9 @@ import { fill, getPart, num, partsData, partsForSlot, texts } from '../logic/dat
 import { instrumentWorks } from '../logic/resources'
 import type { Design, Issue, Part, SlotId } from '../logic/types'
 import { useMission, useMissionReport } from '../store/useMission'
+import { loadCraftScene } from '../three/preload'
+
+const CraftScene = lazy(loadCraftScene)
 
 function isSelected(design: Design, part: Part): boolean {
   if (part.slot === 'instruments') {
@@ -130,21 +134,6 @@ export function Assembly() {
       <ResourcePanel bars={report.bars} />
 
       <div className="assembly-layout">
-        <div className="assembly-stage panel">
-          <div className="stage-chips">
-            <span className="chip">
-              {ctx.destination.name} · {ctx.orbit.name}
-            </span>
-            <span className="chip">{ctx.launchVehicle.name.toUpperCase()}</span>
-            <span className="chip">{ctx.launchVehicle.stages}</span>
-            <span className="chip chip-accent">
-              {fill(t.massChip, { dry: num(report.dryMass), total: num(report.totalMass) })}
-            </span>
-          </div>
-          <SpacecraftSchematic design={design} orbitId={ctx.orbit.id} hotPartId={hotPart} deadPartIds={deadParts} onHover={setHotPart} onPick={pickFromDrawing} />
-          <FlightNotes issues={report.issues} />
-        </div>
-
         <div className="catalog panel">
           <div className="slot-bar">
             <nav className="slot-tabs" aria-label={t.slots}>
@@ -208,6 +197,30 @@ export function Assembly() {
               </section>
             ))}
           </div>
+        </div>
+
+        <div className="assembly-stage panel">
+          <div className="stage-chips">
+            <span className="chip">
+              {ctx.destination.name} · {ctx.orbit.name}
+            </span>
+            <span className="chip">{ctx.launchVehicle.name.toUpperCase()}</span>
+            <span className="chip">{ctx.launchVehicle.stages}</span>
+            <span className="chip chip-accent">
+              {fill(t.massChip, { dry: num(report.dryMass), total: num(report.totalMass) })}
+            </span>
+          </div>
+          {/* The spacecraft in 3D. If 3D cannot start on this computer, the flat drawing is shown instead. */}
+          <div className="craft-view">
+            <div className="craft-ring" aria-hidden="true" />
+            <SceneBoundary fallback={<SpacecraftSchematic design={design} orbitId={ctx.orbit.id} hotPartId={hotPart} deadPartIds={deadParts} onHover={setHotPart} onPick={pickFromDrawing} />}>
+              <Suspense fallback={null}>
+                <CraftScene design={design} orbitId={ctx.orbit.id} />
+              </Suspense>
+            </SceneBoundary>
+            <span className="craft-hint">{t.dragHint}</span>
+          </div>
+          <FlightNotes issues={report.issues} />
         </div>
       </div>
 

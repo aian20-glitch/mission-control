@@ -161,7 +161,8 @@ export function Launch({ onGone }: { onGone: () => void }) {
     // so there is something to land on.
     const waitStart = performance.now()
     const waitForEarth = () => {
-      if (!missionView.earth && performance.now() - waitStart < 1200) {
+      const drawn = missionView.earth || document.querySelector('.trajectory-earth')
+      if (!drawn && performance.now() - waitStart < 1200) {
         requestAnimationFrame(waitForEarth)
         return
       }
