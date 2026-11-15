@@ -4,7 +4,7 @@ Educational game for the challenge "Space Mission Design Game".
 Style (new look, 15 Nov): references are edolus.com (scroll-driven 3D title), igloo.inc (mono type, 3D object in a small window) and usavionix.com (terminal alert feed). Dark, thin lines, square corners, uppercase mono headings. Real NASA 3D rocket models; cinematic night launch.
 Full design: `docs/GDD.md` (idea). Agreed decisions that override the GDD: `docs/DECISIONS.md` (read it first). Challenge text: `docs/CHALLENGE.md`.
 Deadline: 2026-11-15 inclusive. The team brainstorms and gives tasks; Claude writes everything (code, data, texts, assets). Audience: students with zero space background — explain every term in plain words.
-Status: full playable loop in the new look. 3D: the stage behind title/target/orbit (`src/three/StageScene.tsx`), the spacecraft on the build screen (`CraftScene.tsx`), the launch film (`LaunchScene.tsx` + `launch/`, NASA rocket models in `public/models/`). The mission screen is a 2D flight chart with an alert feed. Work is on the local branch `new-style`.
+Status: full playable loop in the new look. 3D: the stage behind title/target/orbit (`src/three/StageScene.tsx`), the spacecraft on the build screen (`CraftScene.tsx`), the launch film (`LaunchScene.tsx` + `launch/`, NASA rocket models in `public/models/`). The mission screen is a 2D flight chart with an alert feed. Live at https://aian20-glitch.github.io/mission-control/.
 
 ## Stack
 - Vite + React + TypeScript. 2D UI (panels, cards, bars, logs) = HTML/CSS.
@@ -12,7 +12,7 @@ Status: full playable loop in the new look. 3D: the stage behind title/target/or
   Look: HDR environment light, subtle bloom on engines and stars, particle smoke, smooth GSAP camera moves.
 - 3D models: NASA 3D Resources (GLB) in `public/models/`, credits in README.
 - GSAP for motion, Howler.js for sound, Zustand for state.
-- Deploy: static build with relative paths (`vite.config.ts` base = './'), works on GitHub Pages or any host. No GitHub repo yet — local git only, push only when the user says so.
+- Deploy: public repo github.com/aian20-glitch/mission-control; every push to main builds and publishes https://aian20-glitch.github.io/mission-control/ (`.github/workflows/pages.yml`). Push only when the user says so.
 - Game data in `src/data/*.json`, never hardcoded in components.
 
 ## Structure
