@@ -3015,7 +3015,7 @@
   letter-spacing: -0.01em;
 }
 
-/* Launch window: the map is a tracking screen; the 3D spacecraft lands on it when the screen opens. */
+/* Launch window: the map is a tracking screen. */
 .window-map {
   background: rgba(4, 9, 14, 0.82);
   overflow: hidden;
@@ -3043,30 +3043,6 @@
   right: 10px;
   border-left: 0;
   border-top: 0;
-}
-
-.window-map .orbit-map,
-.window-map .map-angle,
-.window-map .map-legend {
-  transition: opacity 900ms var(--ease) 700ms;
-}
-
-.window-map.is-arriving .orbit-map,
-.window-map.is-arriving .map-angle,
-.window-map.is-arriving .map-legend {
-  opacity: 0.12;
-  transition: none;
-}
-
-.window-craft {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.window-craft canvas {
-  position: absolute;
-  inset: 0;
 }
 
 /* Debrief */
