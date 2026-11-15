@@ -93,7 +93,9 @@ const EARTH_FRAGMENT = /* glsl */ `
     color += vec3(1.0, 0.68, 0.32) * cities * land * (1.0 - clouds) * (1.0 - day) * 1.6;
 
     // Blue haze of the air toward the edge of the disc.
-    float rim = pow(1.0 - max(dot(n, view), 0.0), 2.5);
+    // Clamped: where we look straight down, the dot product can come out a hair above 1,
+    // and a power of a negative number is "not a number", which the bloom effect spreads over the whole picture.
+    float rim = pow(clamp(1.0 - dot(n, view), 0.0, 1.0), 2.5);
     color = mix(color, vec3(0.28, 0.55, 1.1) * (0.1 + day * 1.2), rim * 0.7);
 
     gl_FragColor = vec4(color, 1.0);

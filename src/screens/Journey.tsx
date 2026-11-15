@@ -158,14 +158,26 @@ export function Journey() {
               {texts.ui.title.team}
             </HudButton>
           </div>
-          <Readout
-            rows={[
-              { label: texts.ui.title.targets, value: destinations.map((d) => d.name).join(' · ') },
-              { label: texts.ui.title.parts, value: String(partsData.parts.length) },
-              { label: texts.ui.title.resources, value: '6' },
-              { label: texts.ui.title.oneMission, value: texts.ui.title.duration },
-            ]}
-          />
+          {/* The game in four numbers */}
+          <dl className="journey-stats">
+            <div className="journey-stat">
+              <dt>{texts.ui.title.targets}</dt>
+              <dd>{String(destinations.length).padStart(2, '0')}</dd>
+              <span className="journey-stat-note">{destinations.map((d) => d.name).join(' · ')}</span>
+            </div>
+            <div className="journey-stat">
+              <dt>{texts.ui.title.parts}</dt>
+              <dd>{String(partsData.parts.length).padStart(2, '0')}</dd>
+            </div>
+            <div className="journey-stat">
+              <dt>{texts.ui.title.resources}</dt>
+              <dd>06</dd>
+            </div>
+            <div className="journey-stat">
+              <dt>{texts.ui.title.oneMission}</dt>
+              <dd>{texts.ui.title.duration}</dd>
+            </div>
+          </dl>
         </div>
       )}
 

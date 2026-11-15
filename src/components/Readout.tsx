@@ -6,7 +6,7 @@ export interface ReadoutRow {
   status?: Severity
 }
 
-// Retro mono panel: "MASS ........ 3,200 KG".
+// A short list of facts: label on the left, value on the right.
 export function Readout({ rows }: { rows: ReadoutRow[] }) {
   return (
     <div className="readout">

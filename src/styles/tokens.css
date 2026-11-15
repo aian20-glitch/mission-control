@@ -21,7 +21,8 @@
   --danger: #e24b4a;
   --danger-soft: rgba(226, 75, 74, 0.16);
 
-  --font-ui: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* One typeface everywhere: IBM Plex Mono (the look of igloo.inc). */
+  --font-ui: 'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
   --font-display: var(--font-mono);
 

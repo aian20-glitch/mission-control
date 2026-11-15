@@ -43,7 +43,7 @@ docs/GDD.md, DECISIONS.md, DATA_SCHEMA.md, CHALLENGE.md
 - Readable, plain code. No clever one-liners or compact tricks.
 - Game rules live in `logic/` as pure functions; components only display and call them.
 - 3D only in these scenes: stage (planets + orbit view), spacecraft, launch. Keep models light (< 5 MB total), lazy-load. Nothing in a 2D screen may import three.js directly.
-- UI: dark (#05080D), translucent panels with backdrop blur, one accent per screen (teal #5DCAA5), amber for warnings and alerts, red only for critical + launch. IBM Plex Mono for headings, buttons, labels, numbers and the feed; Inter for long explanations. Thin 1px lines, 3–6px radius, lots of whitespace.
+- UI: dark (#05080D), translucent panels with backdrop blur, one accent per screen (teal #5DCAA5), amber for warnings and alerts, red only for critical + launch. One typeface everywhere: IBM Plex Mono (the user asked for all fonts to change, 15 Nov). Thin 1px lines, 3–6px radius, lots of whitespace.
 - Motion: soft spring/ease transitions (150–400 ms UI, ≤10 s cinematics with Skip). UI text in English + Russian.
 - Desktop screens fit the window with no page scroll (block "Fit to screen" at the end of screens.css); long lists scroll inside their panel.
 - Before a big feature: short plan. After each working step: `npm run build` passes → check in browser → commit.
