@@ -2,10 +2,10 @@
 :root {
   --bg: #05080d;
   --bg-raised: #0a1119;
-  --panel: rgba(15, 26, 36, 0.7);
+  --panel: rgba(8, 15, 22, 0.76);
   --panel-solid: #0f1a24;
   --panel-hover: rgba(22, 37, 50, 0.8);
-  --line: rgba(255, 255, 255, 0.08);
+  --line: rgba(255, 255, 255, 0.1);
   --line-strong: rgba(255, 255, 255, 0.16);
 
   --text: rgba(255, 255, 255, 0.9);
@@ -25,9 +25,9 @@
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
   --font-display: var(--font-mono);
 
-  --radius: 16px;
-  --radius-md: 12px;
-  --radius-sm: 8px;
+  --radius: 6px;
+  --radius-md: 4px;
+  --radius-sm: 3px;
 
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);

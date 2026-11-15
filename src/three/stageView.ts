@@ -11,6 +11,8 @@ export interface StageView {
   orbitId: string | null
   // Set by the screen on top: called when the player clicks a planet in the 3D picture.
   onPick: ((stop: number) => void) | null
+  // Set by the 3D stage: called when `orbitId` changes, so the spacecraft model can be redrawn.
+  onOrbitChange: (() => void) | null
 }
 
 export const stageView: StageView = {
@@ -19,6 +21,7 @@ export const stageView: StageView = {
   focus: 1,
   orbitId: null,
   onPick: null,
+  onOrbitChange: null,
 }
 
 // The stops of the trip, in order. Stop 0 is the Earth (the title screen).

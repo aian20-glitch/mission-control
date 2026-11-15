@@ -42,6 +42,7 @@ export function Orbit() {
 
   useEffect(() => {
     stageView.orbitId = shown
+    stageView.onOrbitChange?.()
   }, [shown])
 
   if (!destinationId) {

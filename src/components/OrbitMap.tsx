@@ -306,7 +306,7 @@ export function OrbitMap({ destination, month, good }: OrbitMapProps) {
 
         {/* Earth at launch */}
         <circle cx={earth.x} cy={earth.y} r="11" fill="rgba(79,155,232,0.18)" />
-        <circle cx={earth.x} cy={earth.y} r="6" fill="#4f9be8" />
+        <circle cx={earth.x} cy={earth.y} r="6" fill="#4f9be8" className="map-earth" />
         <text x={earth.x} y={earth.y - 16} textAnchor="middle" className="map-label map-label-strong">
           {t.earth}
           <tspan className="map-label-faint"> · {t.launchPoint}</tspan>
@@ -352,7 +352,7 @@ function MoonMap() {
       <DialRing radius={186} />
       <circle cx="200" cy="200" r="150" fill="none" stroke="rgba(255,255,255,0.18)" strokeDasharray="2 5" />
       <circle cx="200" cy="200" r="34" fill="rgba(79,155,232,0.12)" />
-      <circle cx="200" cy="200" r="22" fill="#4f9be8" />
+      <circle cx="200" cy="200" r="22" fill="#4f9be8" className="map-earth" />
       <text x="228" y="204" className="map-label">
         {t.earth}
       </text>

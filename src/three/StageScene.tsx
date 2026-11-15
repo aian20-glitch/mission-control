@@ -21,6 +21,8 @@ import { stageView } from './stageView'
 
 export interface StageSceneProps {
   design: Design
+  // The way of meeting the planet shown in the close view: a lander gets its legs and heat shield.
+  orbitId: OrbitId
   // Called when the player clicks a planet: 0 = Earth, 1 = Moon, 2 = Mars, 3 = Europa.
   onPick: (stop: number) => void
 }
@@ -61,6 +63,10 @@ function ease(x: number): number {
   return t * t * (3 - 2 * t)
 }
 
+// The lander comes in from the upper left, far out, and touches down on the right edge.
+const LANDER_FROM = new THREE.Vector3(-0.78, 0.42, 0.5).normalize()
+const LANDER_TO = new THREE.Vector3(0.86, 0.12, 0.5).normalize()
+
 // Where the spacecraft is on its way past, around or down to the planet.
 // t runs 0..1 and then repeats. The result is in planet radii, measured from the planet's middle.
 function craftPlace(orbitId: string, t: number, out: THREE.Vector3): THREE.Vector3 {
@@ -70,11 +76,11 @@ function craftPlace(orbitId: string, t: number, out: THREE.Vector3): THREE.Vecto
     return out.set(u * 4.4, 0.35 - u * 0.25, 1.55 + u * u * 1.2)
   }
   if (orbitId === 'lander') {
-    // Down from orbit to the ground, then it stays there.
+    // Down from high above to the ground, then it stays there. It lands near the right
+    // edge of the planet as we see it, so it is clearly standing on the surface.
     const fall = ease(t / 0.72)
-    const angle = -2.4 + fall * 2.75
-    const distance = 2.1 - fall * 1.05
-    return out.set(Math.sin(angle) * distance, 0.28 * distance, Math.cos(angle) * distance)
+    out.copy(LANDER_FROM).lerp(LANDER_TO, fall).normalize()
+    return out.multiplyScalar(2.0 - fall * 0.88)
   }
   // Orbiter: round and round on a tilted circle.
   const angle = t * Math.PI * 2
@@ -100,7 +106,7 @@ const PATHS: Record<string, THREE.Vector3[]> = {
 // Seconds for one pass, one lap, or one landing (with a pause on the ground).
 const PATH_SECONDS: Record<string, number> = { flyby: 7, orbiter: 9, lander: 9 }
 
-function StageContent({ design, onPick }: StageSceneProps) {
+function StageContent({ design, orbitId: craftOrbit, onPick }: StageSceneProps) {
   const camera = useThree((state) => state.camera) as THREE.PerspectiveCamera
   const director = useMemo(() => {
     const d = createDirector()
@@ -285,7 +291,7 @@ function StageContent({ design, onPick }: StageSceneProps) {
       </group>
 
       <group ref={craft} visible={false}>
-        <Spacecraft3D design={design} orbitId={(stageView.orbitId ?? 'orbiter') as OrbitId} director={director} glowTexture={glowTexture} />
+        <Spacecraft3D design={design} orbitId={craftOrbit} director={director} glowTexture={glowTexture} />
       </group>
     </>
   )

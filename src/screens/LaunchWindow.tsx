@@ -1,13 +1,20 @@
-import { useEffect } from 'react'
+import { Suspense, lazy, useEffect, useRef, useState } from 'react'
+import gsap from 'gsap'
 import { HudButton } from '../components/HudButton'
 import { OrbitMap } from '../components/OrbitMap'
 import { Readout } from '../components/Readout'
+import { SceneBoundary } from '../components/SceneBoundary'
 import { ScreenHeader, stepLabel } from '../components/ScreenHeader'
 import { StatusLights } from '../components/StatusLights'
 import { num, texts } from '../logic/data'
 import { WINDOW_MONTHS, formatTrip, isGoodWindow, monthLabel, transferMonths, windowFactor } from '../logic/resources'
 import { useMission, useMissionReport } from '../store/useMission'
-import { loadLaunchScene, warmRocketModel } from '../three/preload'
+import { loadCraftScene, loadLaunchScene, warmRocketModel } from '../three/preload'
+
+const CraftScene = lazy(loadCraftScene)
+
+// How long the 3D spacecraft takes to shrink onto the map, in seconds.
+const ARRIVE_SECONDS = 1.7
 
 const YEARS = [2027, 2028, 2029]
 
@@ -16,8 +23,39 @@ export function LaunchWindow() {
   const launchMonth = useMission((s) => s.launchMonth)
   const setLaunchMonth = useMission((s) => s.setLaunchMonth)
   const goTo = useMission((s) => s.goTo)
+  const design = useMission((s) => s.design)
+  // The screen opens with the 3D spacecraft from the build screen. It pulls away, gets small
+  // and lands on the Earth of the flat map: from here on the spacecraft is a dot on a drawing.
+  const [arriving, setArriving] = useState(true)
+  const mapRef = useRef<HTMLDivElement>(null)
+  const craftRef = useRef<HTMLDivElement>(null)
 
   const destination = data ? data.ctx.destination : null
+
+  useEffect(() => {
+    const map = mapRef.current
+    const craft = craftRef.current
+    if (!map || !craft) {
+      setArriving(false)
+      return
+    }
+    // Where the Earth is drawn on the map, measured from the middle of the panel.
+    const earth = map.querySelector('.map-earth')
+    const box = map.getBoundingClientRect()
+    let x = 0
+    let y = 0
+    if (earth) {
+      const spot = earth.getBoundingClientRect()
+      x = spot.left + spot.width / 2 - (box.left + box.width / 2)
+      y = spot.top + spot.height / 2 - (box.top + box.height / 2)
+    }
+    const timeline = gsap.timeline({ onComplete: () => setArriving(false) })
+    timeline.to(craft, { scale: 0.04, x, y, duration: ARRIVE_SECONDS, ease: 'power2.inOut' }, 0.35)
+    timeline.to(craft, { opacity: 0, duration: 0.35, ease: 'power1.in' }, 0.35 + ARRIVE_SECONDS - 0.35)
+    return () => {
+      timeline.kill()
+    }
+  }, [])
 
   // Download the 3D launch film in the background while the player picks a date.
   useEffect(() => {
@@ -70,8 +108,17 @@ export function LaunchWindow() {
       <ScreenHeader step={stepLabel(4, 'window')} title={t.heading} capcom={texts.capcom.window} />
 
       <div className="window-layout">
-        <div className="window-map panel">
+        <div className={'window-map panel' + (arriving ? ' is-arriving' : '')} ref={mapRef}>
           <OrbitMap destination={destination} month={month} good={good} />
+          {arriving && (
+            <div className="window-craft" ref={craftRef} aria-hidden="true">
+              <SceneBoundary>
+                <Suspense fallback={null}>
+                  <CraftScene design={design} orbitId={data.ctx.orbit.id} />
+                </Suspense>
+              </SceneBoundary>
+            </div>
+          )}
         </div>
 
         <div className="window-side">
